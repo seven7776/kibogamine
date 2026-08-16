@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0E0F13">
+<title>希望峰学园</title>
+<meta name="description" content="源远的学习小天地 — 跟课学习、课表、打卡、养黑白熊">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="logo"><canvas id="logo-canvas"></canvas></div>
+    <div>
+      <h1>希望峰<span class="accent">学园</span></h1>
+      <div class="tagline">会计划 · 会表达 · 会坚持</div>
+    </div>
+    <div class="medal-pill">🪙 <span id="medal-count">0</span></div>
+  </div>
+  <div id="view"></div>
+</div>
+
+<div id="roamer"><canvas id="roamer-canvas" data-scale="3"></canvas></div>
+
+<nav id="tabbar" class="tabbar"></nav>
+<div id="toast-wrap"></div>
+
+<script src="pet.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

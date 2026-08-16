@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <div class="topbar"><div class="logo"><canvas id="logo-canvas"></canvas></div><div><h1>希望峰学园</h1></div><div class="medal-pill">🪙 <span id="medal-count">0</span></div></div>
+  <div id="view"></div>
+</div>
+<div id="roamer"><canvas id="roamer-canvas" data-scale="3"></canvas></div>
+<nav id="tabbar" class="tabbar"></nav>
+<div id="toast-wrap"></div>
+<script src="pet.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+setTimeout(function(){
+  var de = document.documentElement;
+  var out = ['scrollWidth=' + de.scrollWidth, 'clientWidth=' + de.clientWidth, 'innerWidth=' + window.innerWidth];
+  var els = document.querySelectorAll('*');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    if (el.scrollWidth > de.clientWidth + 4 || el.getBoundingClientRect().right > de.clientWidth + 4) {
+      out.push('WIDE: ' + el.tagName + '.' + el.className + ' sw=' + el.scrollWidth + ' right=' + Math.round(el.getBoundingClientRect().right));
+    }
+  }
+  document.title = 'DBG';
+  var div = document.createElement('div');
+  div.id = 'dbg';
+  div.textContent = out.join(' | ');
+  document.body.appendChild(div);
+}, 800);
+</script>
+</body>
+</html>
