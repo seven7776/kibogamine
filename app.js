@@ -1,5 +1,5 @@
 /* ============================================================
- * 希望峰学园 · 主程序
+ * 希望之峰 · 主程序
  * 状态(localStorage) + hash路由 + 积分(黑白熊奖章) + 萌宠逻辑
  * ============================================================ */
 (function () {
@@ -551,7 +551,7 @@
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
       '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望峰学园 v1.0 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v1.0 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -883,7 +883,7 @@
       var blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = '希望峰学园备份-' + dkey() + '.json';
+      a.download = '希望之峰备份-' + dkey() + '.json';
       a.click();
       toast('备份已下载');
     });

@@ -1,8 +1,9 @@
 {
-  "name": "希望峰学园",
-  "short_name": "希望峰学园",
+  "name": "希望之峰",
+  "short_name": "希望之峰",
   "description": "源远的学习小天地 — 跟课学习、课表、打卡、养黑白熊",
-  "start_url": "./index.html",
+  "start_url": "/kibogamine/index.html",
+  "scope": "/kibogamine/",
   "display": "standalone",
   "background_color": "#0E0F13",
   "theme_color": "#0E0F13",
