@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>黑白熊3D测试</title>
+<style>
+  body { background:#0E0F13; color:#fff; font-family:monospace; padding:16px; }
+  .row { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+  .cell { background:#1a1c22; border:1px solid #333; padding:8px; text-align:center; }
+  .cell canvas { display:block; margin:0 auto 6px; width:150px; height:150px; }
+  .cell.live canvas { width:200px; height:200px; }
+  .cell span { font-size:11px; color:#aaa; }
+</style>
+</head>
+<body>
+<h3>静帧姿态</h3>
+<div class="row" id="frames"></div>
+<h3>皮肤</h3>
+<div class="row" id="skins"></div>
+<script src="../../three.min.js"></script>
+<script src="../../pet3d.js"></script>
+<script>
+  function mk(parent, label, opts) {
+    var cell = document.createElement('div'); cell.className = 'cell';
+    var cv = document.createElement('canvas');
+    var sp = document.createElement('span'); sp.textContent = label;
+    cell.appendChild(cv); cell.appendChild(sp);
+    document.getElementById(parent).appendChild(cell);
+    MonokumaPet.draw(cv, opts);
+  }
+  ['stand','walkA','sit','sleep','happy','giggle','angry','eat','back'].forEach(function(f){
+    mk('frames', f, { frame: f, skin: 'classic', scale: 4 });
+  });
+  Object.keys(MonokumaPet.SKINS).forEach(function(s){
+    mk('skins', s, { frame: 'stand', skin: s, scale: 4 });
+  });
+</script>
+</body>
+</html>

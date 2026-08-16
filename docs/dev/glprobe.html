@@ -1,0 +1,23 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<div id="out">probing</div>
+<script>
+var out = [];
+try {
+  var c = document.createElement('canvas');
+  var gl = c.getContext('webgl2') || c.getContext('webgl');
+  out.push('webgl=' + (gl ? gl.getParameter(gl.VERSION) : 'NULL'));
+} catch(e) { out.push('err=' + e.message); }
+window.onerror = function(m, s, l){ out.push('ONERROR: ' + m + ' @' + l); render(); };
+function render(){ document.getElementById('out').textContent = out.join(' || '); }
+render();
+</script>
+<script src="../../three.min.js" onerror="out.push('three load fail');render();"></script>
+<script>
+out.push('THREE=' + (window.THREE ? THREE.REVISION : 'missing'));
+try {
+  var r = new THREE.WebGLRenderer({alpha:true});
+  out.push('renderer ok');
+} catch(e) { out.push('renderer fail: ' + e.message); }
+render();
+</script>
+</body></html>

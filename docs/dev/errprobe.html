@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<div id="out">start</div>
+<script>
+window.onerror = function(m, s, l, c){ document.getElementById('out').textContent = 'ERR: ' + m + ' @ ' + s.split('/').pop() + ':' + l + ':' + c; };
+</script>
+<script src="../../three.min.js"></script>
+<script src="../../pet3d.js"></script>
+<script>
+try {
+  var cv = document.createElement('canvas');
+  MonokumaPet.draw(cv, {frame:'stand', skin:'classic', scale:2});
+  document.getElementById('out').textContent = 'draw ok, w=' + cv.width;
+} catch(e) {
+  document.getElementById('out').textContent = 'CATCH: ' + e.message + ' | ' + (e.stack||'').split('\n')[1];
+}
+</script>
+</body></html>
