@@ -4,15 +4,17 @@
 
 ## 在线状态
 - 网址：https://seven7776.github.io/kibogamine/ （GitHub Pages，仓库 seven7776/kibogamine，**公开仓**，master 根目录）
-- v1.0 已上线（2026-08-16）：五大页面 + 像素黑白熊引擎 + 积分 + 课表 + 打卡
+- v2.0 已上线（2026-08-16）：黑白熊升级为 **3D 立体版**（应大张要求替换像素风）
+- v1.0：五大页面 + 积分 + 课表 + 打卡
 
 ## 技术要点
-- 纯前端：index.html + styles.css + pet.js（像素引擎）+ data.js（课程数据）+ app.js（主程序）
+- 纯前端：index.html + styles.css + **three.min.js(r152 UMD)** + **pet3d.js(3D引擎)** + data.js（课程数据）+ app.js（主程序）
 - localStorage key：`kibogamine-v1`；无后端，备份=设置页导出JSON
-- 黑白熊：pet.js 手绘 18×19 像素帧（11帧动作+9皮肤），canvas 渲染；改皮肤改 SKINS/OVERLAYS
-- PWA：manifest + sw.js（缓存名 kibogamine-v1，**改代码部署必须 bump 版本号**）
-- 图标：docs/dev/icon.html 渲染后 Edge 无头截图生成
-- 调试：docs/dev/pet-test.html（全帧/皮肤预览）；**Edge 无头截图有 Windows 125% 缩放坑**：window-size=目标CSS宽度×1.25
+- 黑白熊3D：pet3d.js 程序化建模——MeshStandardMaterial+onBeforeCompile shader 按局部x半白半黑；红斜眼=自定义Extrude楔形；咧嘴=7颗白牙弧线排布+深口腔底；左白右黑圆耳；白肚皮+X扣。9姿态(idle呼吸眨眼/walk/sit/sleep/happy/giggle/angry/eat/back)+9皮肤(调色板+配件mesh：领带/草裙/泳圈4段torus/草帽)。静帧走共享离屏渲染器(logo+皮肤缩略图)，活动画=独立stage(溜达熊+房间熊)
+- 像素版备份：docs/dev/pet-pixel-backup.js
+- PWA：manifest + sw.js（缓存名 kibogamine-v2，**改代码部署必须 bump 版本号**）
+- 图标：docs/dev/icon.html（3D静帧）Edge 无头截图生成
+- 调试：docs/dev/pet3d-test.html（全姿态/皮肤预览）；**Edge 无头截图有 Windows 125% 缩放坑**：window-size=目标CSS宽度×1.25；headless WebGL 可用（SwiftShader）
 
 ## 内容进度
 - 语文（部编五上）：8单元27课目录齐；第1-3课（白鹭/落花生/桂花雨）完整内容

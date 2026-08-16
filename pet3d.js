@@ -368,6 +368,7 @@
     mount(); resize();
     function loop(ts) {
       raf = requestAnimationFrame(loop);
+      if (document.hidden) { last = 0; return; } // 息屏/切后台不渲染, 省电(华为平板)
       var now = ts / 1000;
       var dt = Math.min(0.05, now - (last || now));
       last = now; t += dt;
