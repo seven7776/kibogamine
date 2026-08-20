@@ -47,7 +47,7 @@
     var blackM = plain(skin.b);
     var darkM = plain('#141418', 0.5);
     var redEyeM = new THREE.MeshStandardMaterial({ color: skin.eye, emissive: skin.eye, emissiveIntensity: 0.85, roughness: 0.3 });
-    var teethM = plain('#FFFFFF', 0.35);
+    var teethM = new THREE.MeshStandardMaterial({ color: '#F3EEDF', roughness: 0.62, metalness: 0 });
     var mouthM = plain('#3A0A14', 0.5);
 
     var root = new THREE.Group();      // 整体位移/旋转
@@ -126,12 +126,18 @@
     mouth.position.z = -0.02;
     grinG.add(mouth);
     for (var i = 0; i < 7; i++) {
-      var t = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.16, 0.05), teethM);
+      // 圆头胶囊牙 + 每颗轻微明度差/前后错落, 去塑料感
+      var tg = new THREE.CapsuleGeometry(0.045, 0.09, 4, 12);
+      tg.scale(1, 1, 0.55);
+      var tm = teethM.clone();
+      tm.color.multiplyScalar(0.94 + (i % 3) * 0.03);
+      var t = new THREE.Mesh(tg, tm);
       var fx = (i - 3) * 0.088;
       // 弧线: 外侧上挑(坏笑), 锯齿交错
       var arc = Math.pow(Math.abs(i - 3) / 3, 1.6) * 0.13;
       t.position.set(fx, -0.02 + arc + (i % 2 ? 0.014 : -0.014), 0.11 - Math.pow(Math.abs(i - 3) / 3, 2) * 0.045);
       t.rotation.z = (i - 3) * -0.13;
+      t.rotation.x = (i % 2 ? 0.06 : -0.04);
       grinG.add(t);
     }
 

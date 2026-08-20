@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>teeth close-up</title>
+<style>body{margin:0;background:#0E0F13}canvas{display:block}</style>
+</head>
+<body>
+<script src="../../three.min.js"></script>
+<script src="../../pet3d.js"></script>
+<script>
+  var model = Pet3D.buildModel('classic');
+  var scene = new THREE.Scene();
+  scene.add(model.root);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2d38, 1.05));
+  var k = new THREE.DirectionalLight(0xfff2dd, 1.6); k.position.set(2.5, 4, 3); scene.add(k);
+  var r = new THREE.DirectionalLight(0x8fb8ff, 0.7); r.position.set(-2, 2.5, -3); scene.add(r);
+  var cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+  cam.position.set(1.05, 2.05, 2.1);
+  cam.lookAt(0.30, 1.80, 0.65);
+  var rd = new THREE.WebGLRenderer({ antialias: true });
+  rd.setSize(500, 500);
+  document.body.appendChild(rd.domElement);
+  rd.render(scene, cam);
+</script>
+</body>
+</html>

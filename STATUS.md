@@ -1,11 +1,14 @@
-# 希望峰学园 — 项目状态
+# 希望之峰 — 项目状态
 
-> 更新于 2026-08-16。跨会话续作先读这个 + `docs/2026-08-16-希望峰学园-design.md`。
+> 更新于 2026-08-16。跨会话续作先读这个 + `docs/2026-08-16-希望峰学园-design.md`。（原名"希望峰学园"，大张 2026-08-16 改为**希望之峰**）
 
 ## 在线状态
 - 网址：https://seven7776.github.io/kibogamine/ （GitHub Pages，仓库 seven7776/kibogamine，**公开仓**，master 根目录）
-- v2.0 已上线（2026-08-16）：黑白熊升级为 **3D 立体版**（应大张要求替换像素风）
-- v1.0：五大页面 + 积分 + 课表 + 打卡
+- **APK**：`C:\Users\z\kibogamine-twa\希望之峰.apk`（TWA 封装 1.7MB，packageId `io.github.seven7776.kibogamine`，orientation=any 支持平板横屏），已发微信
+- TWA 工程：`C:\Users\z\kibogamine-twa\`（复制 xiaotiandi-twa 改的，签名密钥库同语儿 App：android.keystore / alias android / pass Xtd@2026app）
+- **assetlinks 已配**：新仓 seven7776/seven7776.github.io（根域 Pages）放了 .well-known/assetlinks.json（含 kibogamine + xiaotiandi 两个包名，同一证书）→ TWA 真全屏无地址栏
+- v2.1 已上线：3D 黑白熊 + 华为平板适配；v4 sw
+- v2.2（2026-08-20）：牙齿去塑料感（暖白哑光 #F3EEDF + 圆头胶囊牙 + 每颗明度差/错落），sw bump v5；APK 重打：**fallbackType 改 webview**（鸿蒙无 Chrome 时 customtabs 兜底打不开的根因），v1+v2+v3 签名，旧版备份 `希望之峰-v1-customtabs-备份.apk`
 
 ## 技术要点
 - 纯前端：index.html + styles.css + **three.min.js(r152 UMD)** + **pet3d.js(3D引擎)** + data.js（课程数据）+ app.js（主程序）
