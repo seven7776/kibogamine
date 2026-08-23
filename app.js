@@ -110,6 +110,54 @@
     arr.forEach(function (t, i) { setTimeout(function () { speakEn(t, true); }, i * 1700); });
   }
 
+  /* ================= 本地课本库（IndexedDB，照片只存本机不上网） ================= */
+  var BOOK_DB = null;
+  function bookDb(fn) {
+    if (BOOK_DB) { fn(BOOK_DB); return; }
+    var rq = indexedDB.open('kibogamine-books', 1);
+    rq.onupgradeneeded = function () { rq.result.createObjectStore('pages', { keyPath: 'lid' }); };
+    rq.onsuccess = function () { BOOK_DB = rq.result; fn(BOOK_DB); };
+    rq.onerror = function () { toast('本地课本库打不开（浏览器存储被关了？）'); };
+  }
+  function bookGet(lid, cb) {
+    bookDb(function (db) {
+      var r = db.transaction('pages').objectStore('pages').get(lid);
+      r.onsuccess = function () { cb(r.result || null); };
+    });
+  }
+  function bookPut(rec, cb) {
+    bookDb(function (db) {
+      var r = db.transaction('pages', 'readwrite').objectStore('pages').put(rec);
+      r.onsuccess = function () { cb && cb(); };
+    });
+  }
+  function bookDel(lid, cb) {
+    bookDb(function (db) {
+      var r = db.transaction('pages', 'readwrite').objectStore('pages').delete(lid);
+      r.onsuccess = function () { cb && cb(); };
+    });
+  }
+  function bookAllKeys(cb) {
+    bookDb(function (db) {
+      var r = db.transaction('pages').objectStore('pages').getAllKeys();
+      r.onsuccess = function () { cb(r.result || []); };
+    });
+  }
+  function compressImg(file, cb) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      var max = 1600, w = img.width, h = img.height;
+      if (Math.max(w, h) > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      cb(cv.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = function () { toast('这张图读不出来，换一张试试'); };
+    img.src = url;
+  }
+
   function toast(msg) {
     var wrap = $('#toast-wrap');
     var t = document.createElement('div');
@@ -458,6 +506,13 @@
       h += '<a class="btn" style="display:block;width:100%;text-decoration:none" href="' + D.PAGES[l.id] + '" target="_blank" rel="noopener">📖 课本原文（点开翻页读全文）</a>';
     }
 
+    // 本地课本照片（拍照导入，只存本机）
+    h += '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<button class="btn ghost" style="flex:1" id="photo-import">📷 拍照/选图存课本页</button>' +
+      '<button class="btn ghost" style="flex:1;display:none" id="photo-view">📚 本地课本</button></div>' +
+      '<input type="file" id="photo-file" accept="image/*" multiple style="display:none">' +
+      '<div class="hint" style="margin-top:6px">拍下的课本页只存在这台平板里，不上网，没网也能翻。</div>';
+
     // 预习任务
     if (l.preview && l.preview.length) {
       h += '<div class="section-title">预习任务<span class="sub">完成一项 +5 奖章</span></div>';
@@ -638,6 +693,25 @@
       '<div class="bar ' + cls + '"><i style="width:' + Math.round(val) + '%"></i></div></div>';
   }
 
+  /* ---------- 本地课本查看页 ---------- */
+  function findLessonAny(lid) {
+    for (var k in D.CURRICULUM) {
+      var f = findLesson(k, lid);
+      if (f) { f.subjectKey = k; return f; }
+    }
+    return null;
+  }
+  function renderBookView(lid) {
+    var f = findLessonAny(lid);
+    var title = f ? f.lesson.title : '本地课本';
+    return '<div class="back-row"><button data-go="#/lesson/' + (f ? f.subjectKey : '') + '/' + lid + '">‹ 返回课文</button></div>' +
+      '<div class="lesson-hero"><div class="crumb">本地课本 · 不上网也能看</div><h2>📚 ' + esc(title) + '</h2></div>' +
+      '<div id="book-pages"><div class="card"><div class="hint">读取中…</div></div></div>' +
+      '<button class="btn" style="width:100%;margin-top:8px" id="photo-import">📷 再补拍几页</button>' +
+      '<button class="btn ghost" style="width:100%;margin-top:8px" id="photo-clear">🗑 清空这课的本地照片</button>' +
+      '<input type="file" id="photo-file" accept="image/*" multiple style="display:none">';
+  }
+
   /* ---------- 设置 ---------- */
   function renderSettings() {
     return '<div class="section-title">设置</div>' +
@@ -648,7 +722,7 @@
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
       '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v1.1 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v1.2 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -787,7 +861,7 @@
   function renderTabbar(route) {
     var bar = $('#tabbar');
     bar.innerHTML = TABS.map(function (t) {
-      var on = route.indexOf(t.hash) === 0 || (t.hash === '#/study' && route.indexOf('#/lesson') === 0) || (t.hash === '#/study' && route.indexOf('#/subject') === 0);
+      var on = route.indexOf(t.hash) === 0 || (t.hash === '#/study' && (route.indexOf('#/lesson') === 0 || route.indexOf('#/subject') === 0 || route.indexOf('#/bookview') === 0));
       return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti">' + t.icon + '</span>' + t.name + '</a>';
     }).join('');
   }
@@ -799,6 +873,8 @@
     if (route.indexOf('#/lesson/') === 0) {
       var parts = route.split('/');
       html = renderLesson(parts[2], parts[3]);
+    } else if (route.indexOf('#/bookview/') === 0) {
+      html = renderBookView(route.split('/')[2]);
     } else if (route.indexOf('#/subject/') === 0) {
       html = renderSubject(route.split('/')[2]);
     } else if (route === '#/study') html = renderStudy();
@@ -836,6 +912,77 @@
     var sa = $('#speak-all', view);
     if (sa) sa.addEventListener('click', function () {
       speakSeq($$('.speak', view).map(function (x) { return x.getAttribute('data-say'); }));
+    });
+    // 本地课本照片（拍照导入，只存本机）
+    function pageLid() {
+      var r = location.hash;
+      if (r.indexOf('#/bookview/') === 0) return r.split('/')[2];
+      if (r.indexOf('#/lesson/') === 0) return r.split('/')[3];
+      return null;
+    }
+    function paintBookPages(rec) {
+      var box = $('#book-pages', view);
+      if (!box) return;
+      if (!rec || !rec.imgs || !rec.imgs.length) {
+        box.innerHTML = '<div class="card"><div class="hint">这课还没有本地照片。点下面的📷按钮，对着课本拍几页就行。</div></div>';
+        return;
+      }
+      box.innerHTML = rec.imgs.map(function (d) {
+        return '<img src="' + d + '" style="width:100%;display:block;margin:0 0 12px;border-radius:10px;background:#fff">';
+      }).join('');
+    }
+    var lid0 = pageLid();
+    var pv = $('#photo-view', view);
+    if (lid0 && pv) bookGet(lid0, function (rec) {
+      if (rec && rec.imgs && rec.imgs.length) { pv.style.display = 'block'; pv.textContent = '📚 本地课本 · ' + rec.imgs.length + '页'; }
+    });
+    if (lid0 && view.querySelector('#book-pages')) bookGet(lid0, paintBookPages);
+    if (pv) pv.addEventListener('click', function () { location.hash = '#/bookview/' + pageLid(); });
+    var pi = $('#photo-import', view);
+    if (pi) pi.addEventListener('click', function () { $('#photo-file', view).click(); });
+    var pfl = $('#photo-file', view);
+    if (pfl) pfl.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(pfl.files || []);
+      if (!files.length) return;
+      var lid = pageLid(); if (!lid) return;
+      var total = files.length, done = 0;
+      bookGet(lid, function (rec) {
+        rec = rec || { lid: lid, imgs: [], at: Date.now() };
+        files.forEach(function (f) {
+          compressImg(f, function (data) {
+            rec.imgs.push(data);
+            if (++done === total) bookPut(rec, function () {
+              sfx('check');
+              toast('已存 ' + total + ' 页到本机（不上网）');
+              pfl.value = '';
+              if (view.querySelector('#book-pages')) paintBookPages(rec);
+              var pv2 = $('#photo-view', view);
+              if (pv2) { pv2.style.display = 'block'; pv2.textContent = '📚 本地课本 · ' + rec.imgs.length + '页'; }
+            });
+          });
+        });
+      });
+    });
+    var pcl = $('#photo-clear', view);
+    if (pcl) pcl.addEventListener('click', function () {
+      var lid = pageLid();
+      modal('清空本地照片', '<div style="font-size:14px;margin-bottom:8px">只删这一课存在本机的课本照片，确定？</div>', function () {
+        bookDel(lid, function () { toast('已清空'); render(); });
+      });
+    });
+    // 学科列表：给有本地照片的课打📚标
+    if (route.indexOf('#/subject/') === 0) bookAllKeys(function (keys) {
+      if (!keys || !keys.length) return;
+      $$('.lesson-row', view).forEach(function (row) {
+        var go = row.getAttribute('data-go') || '';
+        var m = go.match(/#\/lesson\/\w+\/(\S+)/);
+        if (m && keys.indexOf(m[1]) > -1) {
+          var sp = document.createElement('span');
+          sp.textContent = '📚';
+          sp.title = '这课有本地课本照片';
+          row.appendChild(sp);
+        }
+      });
     });
     // 单元折叠
     $$('[data-unit] .unit-head', view).forEach(function (el) {
