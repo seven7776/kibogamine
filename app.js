@@ -327,6 +327,7 @@
     var h = '<div class="back-row"><button data-go="#/study">‹ 返回学科</button></div>';
     h += '<div class="lesson-hero"><div class="crumb">' + s.version + '</div><h2 style="color:' + s.color + '">' + s.name + '</h2>' +
       '<div class="focus">点单元展开课文，点课文开始学习</div></div>';
+    if (s.ebook) h += '<a class="btn" style="display:block;width:100%;text-decoration:none;margin-top:8px" href="' + s.ebook + '" target="_blank" rel="noopener">📖 看电子课本（原版课本页）</a>';
     s.units.forEach(function (u, ui) {
       h += '<div class="unit-block' + (ui === 0 ? ' open' : '') + '" data-unit>' +
         '<div class="unit-head"><span style="color:' + s.color + '">▸</span><div>' + esc(u.title) +
@@ -365,6 +366,15 @@
     h += '<div class="lesson-hero"><div class="crumb">' + esc(u.title) + (l.author ? ' · ' + esc(l.author) : '') + '</div>' +
       '<h2 style="color:' + s.color + '">' + esc(l.title) + '</h2>' +
       '<div class="focus">学习重点：' + esc(l.focus) + '</div></div>';
+
+    // 课文全文（公版课文）
+    if (l.fullText && l.fullText.length) {
+      h += '<div class="section-title">课文全文<span class="sub">公版课文 · 可直接背诵</span></div><div class="card">';
+      l.fullText.forEach(function (p) {
+        h += '<p style="margin:0 0 10px;text-indent:2em;font-size:15px;line-height:1.9">' + esc(p) + '</p>';
+      });
+      h += '</div>';
+    }
 
     // 预习任务
     if (l.preview && l.preview.length) {
