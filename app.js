@@ -1460,16 +1460,16 @@
     });
     var ub = $('#update-btn', view);
     if (ub) ub.addEventListener('click', function () {
-      if (!('serviceWorker' in navigator)) { toast('这台设备不支持自动更新'); return; }
-      toast('正在检查更新…');
-      navigator.serviceWorker.getRegistration().then(function (reg) {
-        if (!reg) { toast('本地没有缓存，关掉重开就是最新版'); return; }
-        reg.update().then(function () {
-          setTimeout(function () {
-            if (!reg.installing && !reg.waiting) toast('已经是最新版啦');
-          }, 1500);
-        }).catch(function () { toast('检查失败，看看网络连没连'); });
-      });
+      toast('强制刷新中…');
+      // 先把本地缓存全清掉，再重载：重载后所有文件都从网上拿最新的
+      if ('caches' in window) {
+        caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }).then(function () {
+          if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then(function (r) { return r && r.update(); }).catch(function () { });
+          setTimeout(function () { location.reload(true); }, 400);
+        }).catch(function () { location.reload(true); });
+      } else location.reload(true);
     });
     var sb = $('#sound-btn', view);
     if (sb) sb.addEventListener('click', function () {
@@ -1545,7 +1545,7 @@
     }, 60000);
     window.addEventListener('hashchange', render);
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      navigator.serviceWorker.register('sw.js').then(function (reg) {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
         // 自动更新：启动即主动检查（不依赖页面导航），有新版自动换血并刷新一次
         var refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', function () {
