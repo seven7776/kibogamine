@@ -201,6 +201,37 @@
     img.onerror = function () { toast('这张图读不出来，换一张试试'); };
     img.src = url;
   }
+  /* 从电脑批量导入整本书（图存在电脑，通过家庭Wi-Fi拉进平板） */
+  function importBook(ab, pages, addr, btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ ' + ab + ' 准备中…';
+    sfx('check');
+    function next(n) {
+      if (n > pages) {
+        btn.textContent = '✅ ' + ab + ' 已导入（' + pages + '页）';
+        sfx('done'); toast('导入完成！点开每课直接看课本页');
+        return;
+      }
+      var key = ab + ':' + String(n).padStart(3, '0');
+      bookGet(key, function (rec) {
+        if (rec && rec.imgs && rec.imgs[0]) { next(n + 1); return; } // 已导入的页跳过
+        fetch('http://' + addr + '/img/' + ab + '/' + String(n).padStart(3, '0') + '.jpg')
+          .then(function (r) { if (!r.ok) throw 0; return r.blob(); })
+          .then(function (bl) {
+            var fr = new FileReader();
+            fr.onload = function () {
+              bookPut({ lid: key, imgs: [fr.result], at: Date.now() }, function () {
+                if (n % 10 === 0 || n === pages) btn.textContent = '⏳ ' + ab + ' 导入中 ' + n + '/' + pages;
+                next(n + 1);
+              });
+            };
+            fr.readAsDataURL(bl);
+          })
+          .catch(function () { next(n + 1); }); // 单页失败跳过继续
+      });
+    }
+    next(1);
+  }
 
   function toast(msg) {
     var wrap = $('#toast-wrap');
@@ -536,6 +567,9 @@
       '<h2 style="color:' + s.color + '">' + esc(l.title) + '</h2>' +
       '<div class="focus">学习重点：' + esc(l.focus) + '</div></div>';
 
+    // 整本书离线页（导入后课文页直接显示课本图）
+    h += '<div id="book-embed"></div>';
+
     // 课文全文（公版课文）
     if (l.fullText && l.fullText.length) {
       h += '<div class="section-title">课文全文<span class="sub">公版课文 · 可直接背诵</span></div><div class="card">';
@@ -825,13 +859,14 @@
     return '<div class="section-title">设置</div>' +
       '<div class="card">' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="update-btn">🔄 检查更新</button>' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="book-import-btn">📥 从电脑导入整本课本（离线看）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="sound-btn">' + (S.sound === false ? '🔇 音效：关（点我开启）' : '🔊 音效：开（点我关闭）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="export-btn">导出备份（JSON）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="import-btn">导入备份</button>' +
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
       '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v1.3 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v1.4 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -1097,6 +1132,32 @@
       }).join('');
     }
     var lid0 = pageLid();
+    // 整本书离线页：课文页内嵌课本图+翻页
+    var emb = $('#book-embed', view);
+    if (emb && lid0 && route.indexOf('#/lesson/') === 0) {
+      var anch = {};
+      try { anch = JSON.parse(localStorage.getItem('kbpg-anchors') || '{}'); } catch (e) { }
+      var abk = lid0.slice(0, 2);
+      var pg0 = anch[lid0];
+      var bookTotal = { yw: 133, sx: 124, yy: 106 }[abk] || 999;
+      if (pg0) {
+        (function drawEmbed(p) {
+          if (p < 1 || p > bookTotal) { toast('到头啦'); return; }
+          emb.dataset.pg = p;
+          bookGet(abk + ':' + String(p).padStart(3, '0'), function (rec) {
+            if (!(rec && rec.imgs && rec.imgs[0])) { emb.innerHTML = ''; return; }
+            emb.innerHTML = '<div class="section-title">课本原文<span class="sub">第' + p + '页 · 已离线</span></div>' +
+              '<img src="' + rec.imgs[0] + '" style="width:100%;display:block;border-radius:10px;background:#fff" alt="课本第' + p + '页">' +
+              '<div style="display:flex;gap:8px;margin-top:8px">' +
+              '<button class="btn ghost" style="flex:1" id="pg-prev">◀ 上一页</button>' +
+              '<button class="btn ghost" style="flex:1" id="pg-next">下一页 ▶</button></div>';
+            var pv = $('#pg-prev', emb), nx = $('#pg-next', emb);
+            if (pv) pv.onclick = function () { sfx('tap'); drawEmbed(p - 1); };
+            if (nx) nx.onclick = function () { sfx('tap'); drawEmbed(p + 1); };
+          });
+        })(pg0);
+      }
+    }
     var pv = $('#photo-view', view);
     if (lid0 && pv) bookGet(lid0, function (rec) {
       if (rec && rec.imgs && rec.imgs.length) { pv.style.display = 'block'; pv.textContent = '📚 本地课本 · ' + rec.imgs.length + '页'; }
@@ -1306,6 +1367,42 @@
       petPlayer = null;
     }
     // 设置
+    var bi2 = $('#book-import-btn', view);
+    if (bi2) bi2.addEventListener('click', function () {
+      var mask = modal('📥 从电脑导入整本课本',
+        '<div class="hint" style="margin-bottom:8px">电脑和这台平板要连<b>同一个Wi-Fi</b>，电脑上的课本服务器要开着（妈妈会保证）。下面填电脑地址。</div>' +
+        '<input id="pc-addr" placeholder="例如 192.168.5.4:8899" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid #555;background:#1c1e26;color:#fff">' +
+        '<button class="btn" id="pc-connect" style="width:100%;margin-top:8px">连接电脑</button>' +
+        '<div id="pc-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)">填好地址后点"连接电脑"。</div>' +
+        '<div id="pc-books"></div>',
+        null, '关闭');
+      var conn = $('#pc-connect', mask);
+      if (conn) conn.onclick = function () {
+        var addr = ($('#pc-addr', mask).value || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        if (!addr) { $('#pc-status', mask).textContent = '先填电脑地址哦'; return; }
+        $('#pc-status', mask).textContent = '连接中…';
+        fetch('http://' + addr + '/manifest.json')
+          .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+          .then(function (man) {
+            try { localStorage.setItem('kbpg-anchors', JSON.stringify(man.anchors || {})); } catch (e) { }
+            var box = $('#pc-books', mask);
+            box.innerHTML = '';
+            Object.keys(man.subjects).forEach(function (ab) {
+              var s2 = man.subjects[ab];
+              var b = document.createElement('button');
+              b.className = 'btn';
+              b.style.cssText = 'width:100%;margin-top:8px';
+              b.textContent = '📥 ' + s2.name + '（' + s2.pages + '页）';
+              b.onclick = function () { importBook(ab, s2.pages, addr, b); };
+              box.appendChild(b);
+            });
+            $('#pc-status', mask).textContent = '连上了！点要导入的书（一本约2-5分钟，中途别锁屏）：';
+          })
+          .catch(function () {
+            $('#pc-status', mask).textContent = '连不上：看看是不是同一个Wi-Fi、地址对不对、电脑服务器开没开';
+          });
+      };
+    });
     var ub = $('#update-btn', view);
     if (ub) ub.addEventListener('click', function () {
       if (!('serviceWorker' in navigator)) { toast('这台设备不支持自动更新'); return; }
