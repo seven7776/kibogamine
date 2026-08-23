@@ -12,6 +12,7 @@
   function defaultState() {
     return {
       points: 30,
+      sound: true,
       streak: 0,
       lastActiveDay: null,
       createdAt: Date.now(),
@@ -47,6 +48,67 @@
   }
   function todayDow() { var d = new Date().getDay(); return d === 0 ? 7 : d; } // 1=一 .. 7=日
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ================= 音效（WebAudio 合成，无需音频文件，离线可用） ================= */
+  var AC = null;
+  function audioCtx() {
+    try {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      if (AC.state === 'suspended') AC.resume();
+      return AC;
+    } catch (e) { return null; }
+  }
+  function tone(freq, dur, delay, type, vol) {
+    if (S.sound === false) return;
+    var ac = audioCtx(); if (!ac) return;
+    var t0 = ac.currentTime + (delay || 0);
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function sfx(name) {
+    if (S.sound === false) return;
+    switch (name) {
+      case 'tap': tone(520, .08, 0, 'triangle', .09); break;
+      case 'check': tone(660, .09, 0, 'sine', .14); tone(880, .1, .07, 'sine', .14); break;
+      case 'earn': [523, 659, 784].forEach(function (f, i) { tone(f, .12, i * .08, 'triangle', .13); }); break;
+      case 'done': [523, 659, 784, 1047].forEach(function (f, i) { tone(f, .16, i * .1, 'triangle', .15); }); tone(1568, .28, .44, 'sine', .09); break;
+      case 'buy': tone(392, .1, 0, 'square', .06); tone(523, .14, .09, 'square', .06); break;
+      case 'levelup': [392, 523, 659, 784, 1047].forEach(function (f, i) { tone(f, .14, i * .09, 'triangle', .14); }); break;
+      case 'sad': tone(300, .18, 0, 'sawtooth', .05); tone(220, .26, .14, 'sawtooth', .05); break;
+    }
+  }
+
+  /* ================= 英语点读（系统 TTS 小喇叭） ================= */
+  var voicesCache = null;
+  function enVoice() {
+    try {
+      if (!voicesCache) {
+        var vs = speechSynthesis.getVoices() || [];
+        voicesCache = vs.filter(function (v) { return /^en(-|_)/i.test(v.lang); });
+      }
+      return voicesCache[0] || null;
+    } catch (e) { return null; }
+  }
+  if ('speechSynthesis' in window) {
+    speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = function () { voicesCache = null; };
+  }
+  function speakEn(text, keep) {
+    if (!('speechSynthesis' in window)) { toast('这台设备不支持朗读，先升级浏览器试试'); return; }
+    if (!keep) speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; var v = enVoice(); if (v) u.voice = v;
+    u.rate = 0.85; u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  }
+  function speakSeq(arr) {
+    arr.forEach(function (t, i) { setTimeout(function () { speakEn(t, true); }, i * 1700); });
+  }
 
   function toast(msg) {
     var wrap = $('#toast-wrap');
@@ -84,6 +146,7 @@
   /* ================= 积分 ================= */
   function earn(n, why, ev) {
     S.points += n;
+    sfx('earn');
     // 连续天数
     var t = dkey(), y = dkey(-1);
     if (S.lastActiveDay !== t) {
@@ -98,7 +161,7 @@
   }
   function spend(n) {
     if (S.points < n) { toast('奖章不够啦，先去学习打卡挣奖章！'); return false; }
-    S.points -= n; save(); updateMedalPill();
+    S.points -= n; save(); updateMedalPill(); sfx('buy');
     return true;
   }
   function updateMedalPill() {
@@ -108,20 +171,32 @@
 
   /* ================= 黑白熊台词 ================= */
   var QUOTES = {
-    feed: ['唔噗噗，这还差不多。', '吧唧吧唧……再来一碗！', '校长的午餐时间！'],
-    drink: ['咕咚咕咚……噗哈！', '水是希望之源哦。'],
-    snack: ['零食！！唔噗噗噗~', '这个归校长我了！'],
-    tickle: ['唔噗噗噗~住手啦好痒！', '哈哈哈……你完啦你完啦'],
-    roll: ['翻个身~别看我屁股。', '哼，给你个背影。'],
-    sleep: ['晚安……明天也要充满希望地绝望哦。', '呼……呼……'],
-    wake: ['唔……再睡五分钟……', '早啊，今天也要给校长挣奖章！'],
-    angry: ['你再不管我，就开班级审判了哦！', '饿扁了……这就是绝望的味道吗？', '喂——有人吗——'],
-    tap: ['干嘛？', '唔噗噗！', '找校长有事？', '戳我戳我，奖章拿来~'],
-    levelup: ['升级啦！我们的羁绊加深了哦！']
+    feed: ['唔噗噗，这还差不多。', '吧唧吧唧……再来一碗！', '校长的午餐时间！', '好吃到想开班级审判！', '能量补满，绝望退散！', '这顿算你孝顺校长的。'],
+    drink: ['咕咚咕咚……噗哈！', '水是希望之源哦。', '干杯~以超高校级校长的名义！', '咕噜咕噜……喉咙得救了。'],
+    snack: ['零食！！唔噗噗噗~', '这个归校长我了！', '藏起来……才不给你。', '甜品是绝望里唯一的希望！', '唔哦哦，是高热量的幸福！'],
+    tickle: ['唔噗噗噗~住手啦好痒！', '哈哈哈……你完啦你完啦', '再挠就把你关禁闭！', '肚、肚子……好痒哈哈哈！'],
+    roll: ['翻个身~别看我屁股。', '哼，给你个背影。', '本校长今日不营业。', '背对你也是一种关爱。'],
+    sleep: ['晚安……明天也要充满希望地绝望哦。', '呼……呼……', 'zzZ……梦见超大熊饼干……', '别吵，校长充电中……'],
+    wake: ['唔……再睡五分钟……', '早啊，今天也要给校长挣奖章！', '哈啊~睡饱了，超高校级的一天！', '醒了醒了……早饭呢？'],
+    angry: ['你再不管我，就开班级审判了哦！', '饿扁了……这就是绝望的味道吗？', '喂——有人吗——', '本校长要闹了！奖章呢！饭呢！', '绝望……扑面而来的被冷落的绝望……'],
+    tap: ['干嘛？', '唔噗噗！', '找校长有事？', '戳我戳我，奖章拿来~', '再戳就要收按摩费了哦！', '手感如何？本校长可是超高校级的柔软。', '别把熊毛戳掉了！'],
+    levelup: ['升级啦！我们的羁绊加深了哦！', '唔哦哦，力量涌上来了！', '离超高校级校长又近一步！'],
+    studyDone: ['又完成一课！不愧是看中的人才！', '唔噗噗，奖章没白发吧？', '这种学习速度……超高校级的！', '距离毕业又近一天，可喜可贺！', '课本都被你征服了，本校长很满意。'],
+    checkin: ['打卡成功！坚持就是希望！', '今天的任务，消灭！', '唔噗噗，又向绝望势力前进一格！', '连续作战，校长看好你哦。']
   };
   function quote(type) {
     var arr = QUOTES[type] || QUOTES.tap;
     return arr[Math.floor(Math.random() * arr.length)];
+  }
+  function greetLine() {
+    var h = new Date().getHours();
+    if (h < 6) return '这么早？！你是超高校级的早起冠军吗……';
+    if (h < 9) return '早上好！今天是充满希望的一天！';
+    if (h < 12) return '上午好，学习使校长快乐~';
+    if (h < 14) return '午饭时间！吃饱了才有力气绝望……啊不，学习！';
+    if (h < 18) return '下午好，奖章在手，天下我有！';
+    if (h < 22) return '晚上好~今日份的作业消灭了吗？';
+    return '这么晚还不睡？黑白熊校长要查寝了哦！';
   }
 
   /* ================= 萌宠数值 ================= */
@@ -134,6 +209,7 @@
     S.pet.xp += n;
     if (petLevel() > old) {
       say(quote('levelup'));
+      sfx('levelup');
       toast('羁绊升级！Lv.' + petLevel() + ' ' + petLevelName());
     }
     save();
@@ -396,11 +472,15 @@
 
     // 词语/单词
     if (l.words) {
-      h += '<div class="section-title">' + (key === 'english' ? '单词短语' : '词语积累') + '</div><div class="card"><div class="word-chips">';
-      if (l.words.list) l.words.list.forEach(function (w) { h += '<span class="chip' + (key === 'english' ? ' eng' : '') + '">' + esc(w) + '</span>'; });
-      if (l.words.phrases) l.words.phrases.forEach(function (w) { h += '<span class="chip eng" style="border-color:var(--gold-dim)">' + esc(w) + '</span>'; });
+      var isEn = key === 'english';
+      h += '<div class="section-title">' + (isEn ? '单词短语<span class="sub">点单词🔊听发音</span>' : '词语积累') + '</div><div class="card"><div class="word-chips">';
+      if (l.words.list) l.words.list.forEach(function (w) { h += isEn
+        ? '<span class="chip eng speak" data-say="' + esc(w) + '" style="cursor:pointer">🔊 ' + esc(w) + '</span>'
+        : '<span class="chip">' + esc(w) + '</span>'; });
+      if (l.words.phrases) l.words.phrases.forEach(function (w) { h += '<span class="chip eng speak" data-say="' + esc(w) + '" style="border-color:var(--gold-dim);cursor:pointer">🔊 ' + esc(w) + '</span>'; });
       if (l.words.write) l.words.write.forEach(function (w) { h += '<span class="chip" style="border-color:' + s.color + '55">' + esc(w) + '</span>'; });
       h += '</div>';
+      if (isEn) h += '<button class="btn ghost" style="width:100%;margin-top:10px" id="speak-all">🔊 顺序读一遍全部单词</button>';
       if (l.words.write) h += '<div class="hint">带色框的是会写字，每个写两遍，明天听写。</div>';
       h += '</div>';
     }
@@ -562,12 +642,13 @@
   function renderSettings() {
     return '<div class="section-title">设置</div>' +
       '<div class="card">' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="sound-btn">' + (S.sound === false ? '🔇 音效：关（点我开启）' : '🔊 音效：开（点我关闭）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="export-btn">导出备份（JSON）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="import-btn">导入备份</button>' +
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
       '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v1.0 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v1.1 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -659,6 +740,7 @@
     el.addEventListener('click', function (e) {
       var p = S.pet;
       p.mood = Math.min(100, p.mood + 2);
+      sfx('tap');
       addXp(1); save();
       roamerPlayer.play(petGrumpy() ? 'angry' : 'giggle');
       toast(petGrumpy() ? quote('angry') : quote('tap'));
@@ -744,6 +826,17 @@
     $$('.book-btn', view).forEach(function (el) {
       el.addEventListener('click', function (e) { e.stopPropagation(); });
     });
+    // 英语点读小喇叭
+    $$('.speak', view).forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        speakEn(el.getAttribute('data-say'));
+      });
+    });
+    var sa = $('#speak-all', view);
+    if (sa) sa.addEventListener('click', function () {
+      speakSeq($$('.speak', view).map(function (x) { return x.getAttribute('data-say'); }));
+    });
     // 单元折叠
     $$('[data-unit] .unit-head', view).forEach(function (el) {
       el.addEventListener('click', function () { el.parentElement.classList.toggle('open'); });
@@ -756,6 +849,7 @@
         var st = S.study[lid] || (S.study[lid] = { tasks: {}, finished: false });
         if (st.tasks[tid]) return;
         st.tasks[tid] = true;
+        sfx('check');
         earn(5, '预习任务', e);
         render();
       });
@@ -779,6 +873,7 @@
       S.counters.lessonsDone++;
       if (S.counters.lessonsDone === 1) grantBadge('first_lesson');
       earn(20, '完成一课', e);
+      setTimeout(function () { sfx('done'); toast('🐻 ' + quote('studyDone')); }, 350);
       render();
     });
     // 课表编辑
@@ -832,6 +927,7 @@
         var item = S.checkins.items.filter(function (x) { return x.id === id; })[0];
         if (id === 'guitar') { S.counters.guitarDays++; checkBadges(); }
         earn(item.points, item.name, e);
+      setTimeout(function () { toast('🐻 ' + quote('checkin')); }, 300);
         render();
       });
     });
@@ -867,7 +963,7 @@
       var cv = $('#pet-canvas', view);
       petPlayer = window.MonokumaPet.createPlayer(cv, function () { return S.pet.skin; });
       petPlayer.play(S.pet.sleeping ? 'sleep' : (petGrumpy() ? 'angry' : 'idle'));
-      setTimeout(function () { say(petGrumpy() ? quote('angry') : '唔噗噗，你来啦！'); }, 500);
+      setTimeout(function () { say(petGrumpy() ? quote('angry') : greetLine()); }, 500);
       // 待机眨眼
       if (window._petBlink) clearInterval(window._petBlink);
       window._petBlink = setInterval(function () {
@@ -898,6 +994,13 @@
       petPlayer = null;
     }
     // 设置
+    var sb = $('#sound-btn', view);
+    if (sb) sb.addEventListener('click', function () {
+      S.sound = (S.sound === false);
+      save(); render();
+      toast(S.sound ? '音效已开 🔊' : '音效已关 🔇');
+      if (S.sound) sfx('check');
+    });
     var ex = $('#export-btn', view);
     if (ex) ex.addEventListener('click', function () {
       var blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
