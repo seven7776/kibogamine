@@ -13,6 +13,7 @@
     return {
       points: 30,
       sound: true,
+      theme: 'dark',
       streak: 0,
       lastActiveDay: null,
       createdAt: Date.now(),
@@ -127,8 +128,8 @@
     sweep(260, 190, .09, .27, 'square', .09);   /* 噗~ */
   }
 
-  /* ================= 英语点读（系统 TTS 小喇叭） ================= */
-  var voicesCache = null;
+  /* ================= 英语点读（系统TTS优先，华为WebView无引擎时走有道在线朗读） ================= */
+  var voicesCache = null, ttsVerdict = null, curAudio = null;
   function enVoice() {
     try {
       if (!voicesCache) {
@@ -142,16 +143,57 @@
     speechSynthesis.getVoices();
     speechSynthesis.onvoiceschanged = function () { voicesCache = null; };
   }
-  function speakEn(text, keep) {
-    if (!('speechSynthesis' in window)) { toast('这台设备不支持朗读，先升级浏览器试试'); return; }
-    if (!keep) speechSynthesis.cancel();
+  function stopSpeak() {
+    try { speechSynthesis.cancel(); } catch (e) { }
+    if (curAudio) { try { curAudio.pause(); } catch (e) { } curAudio = null; }
+  }
+  function sysTtsReady(cb) {
+    if (ttsVerdict) return cb(ttsVerdict === 'sys');
+    try { ttsVerdict = localStorage.getItem('kbpg-tts'); } catch (e) { }
+    if (ttsVerdict) return cb(ttsVerdict === 'sys');
+    if (!('speechSynthesis' in window)) { ttsVerdict = 'web'; try { localStorage.setItem('kbpg-tts', 'web'); } catch (e) { } return cb(false); }
+    var vs = speechSynthesis.getVoices();
+    var ok = vs.some(function (v) { return /^en(-|_)/i.test(v.lang); });
+    if (vs.length) { ttsVerdict = ok ? 'sys' : 'web'; try { localStorage.setItem('kbpg-tts', ttsVerdict); } catch (e) { } return cb(ok); }
+    var n = 0, iv = setInterval(function () { // voices 异步加载，最多等2秒
+      var v2 = speechSynthesis.getVoices();
+      if (v2.length || ++n > 8) {
+        clearInterval(iv);
+        var ok2 = v2.some(function (v) { return /^en(-|_)/i.test(v.lang); });
+        ttsVerdict = ok2 ? 'sys' : 'web';
+        try { localStorage.setItem('kbpg-tts', ttsVerdict); } catch (e) { }
+        cb(ok2);
+      }
+    }, 250);
+  }
+  function speakSys(text) {
     var u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-US'; var v = enVoice(); if (v) u.voice = v;
     u.rate = 0.85; u.pitch = 1.05;
     speechSynthesis.speak(u);
   }
+  function speakWeb(text) {
+    var a = new Audio('https://dict.youdao.com/dictvoice?type=0&audio=' + encodeURIComponent(text));
+    curAudio = a;
+    a.play().catch(function () { toast('在线朗读需要联网'); });
+  }
+  function speakEn(text, keep) {
+    if (!keep) stopSpeak();
+    sysTtsReady(function (ok) { ok ? speakSys(text) : speakWeb(text); });
+  }
   function speakSeq(arr) {
-    arr.forEach(function (t, i) { setTimeout(function () { speakEn(t, true); }, i * 1700); });
+    stopSpeak();
+    sysTtsReady(function (ok) {
+      if (ok) { arr.forEach(function (t, i) { setTimeout(function () { speakSys(t); }, i * 1700); }); return; }
+      (function webSeq(i) {
+        if (i >= arr.length) return;
+        var a = new Audio('https://dict.youdao.com/dictvoice?type=0&audio=' + encodeURIComponent(arr[i]));
+        curAudio = a;
+        a.onended = function () { setTimeout(function () { webSeq(i + 1); }, 400); };
+        a.onerror = function () { webSeq(i + 1); };
+        a.play().catch(function () { toast('在线朗读需要联网'); webSeq(i + 1); });
+      })(0);
+    });
   }
 
   /* ================= 本地课本库（IndexedDB，照片只存本机不上网） ================= */
@@ -859,6 +901,7 @@
     return '<div class="section-title">设置</div>' +
       '<div class="card">' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="update-btn">🔄 检查更新</button>' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="theme-btn">' + (S.theme === 'light' ? '🌞 主题：纸张白（点换深夜黑）' : '🌙 主题：深夜黑（点换纸张白）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="book-import-btn">📥 从电脑导入整本课本（离线看）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="sound-btn">' + (S.sound === false ? '🔇 音效：关（点我开启）' : '🔊 音效：开（点我关闭）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="export-btn">导出备份（JSON）</button>' +
@@ -866,7 +909,7 @@
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
       '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v1.4 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v1.5 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -1072,7 +1115,7 @@
       var g = mathGen(pageLid());
       sfx('pop');
       modal('🎯 随机练一题', '<div class="card" style="font-size:16px;margin-bottom:10px">' + esc(g.q) + '</div>' +
-        '<input id="quiz-in" inputmode="decimal" placeholder="在这里写答案" style="width:100%;padding:10px;font-size:18px;border-radius:10px;border:1px solid #555;background:#1c1e26;color:#fff">' +
+        '<input id="quiz-in" inputmode="decimal" placeholder="在这里写答案" style="width:100%;padding:10px;font-size:18px;border-radius:10px;border:1px solid #555;background:var(--surface3);color:var(--text)">' +
         '<div id="quiz-fb" style="color:var(--pink);font-size:13px;margin-top:6px;min-height:18px"></div>',
         function (mk) {
           var v = parseFloat($('#quiz-in', mk).value);
@@ -1368,11 +1411,17 @@
       petPlayer = null;
     }
     // 设置
+    var tb2 = $('#theme-btn', view);
+    if (tb2) tb2.addEventListener('click', function () {
+      S.theme = (S.theme === 'light') ? 'dark' : 'light';
+      save(); applyTheme(S.theme); render();
+      toast(S.theme === 'light' ? '换上纸张白 🌞' : '换回深夜黑 🌙');
+    });
     var bi2 = $('#book-import-btn', view);
     if (bi2) bi2.addEventListener('click', function () {
       var mask = modal('📥 从电脑导入整本课本',
         '<div class="hint" style="margin-bottom:8px">电脑和这台平板要连<b>同一个Wi-Fi</b>，电脑上的课本服务器要开着（妈妈会保证）。下面填电脑地址。</div>' +
-        '<input id="pc-addr" placeholder="例如 192.168.5.4:8899" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid #555;background:#1c1e26;color:#fff">' +
+        '<input id="pc-addr" placeholder="例如 192.168.5.4:8899" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid #555;background:var(--surface3);color:var(--text)">' +
         '<button class="btn" id="pc-connect" style="width:100%;margin-top:8px">连接电脑</button>' +
         '<div id="pc-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)">填好地址后点"连接电脑"。</div>' +
         '<div id="pc-books"></div>',
@@ -1467,6 +1516,17 @@
   }
 
   /* ================= 启动 ================= */
+  function applyTheme(t) {
+    document.body.classList.toggle('theme-light', t === 'light');
+  }
+  (function () { // 主题尽早应用，避免闪深色
+    var t = null;
+    try { t = new URLSearchParams(location.search).get('theme'); } catch (e) { }
+    if (t !== 'light' && t !== 'dark') {
+      try { t = (JSON.parse(localStorage.getItem(LS_KEY)) || {}).theme; } catch (e) { }
+    }
+    document.addEventListener('DOMContentLoaded', function () { applyTheme(t || 'dark'); });
+  })();
   function boot() {
     decayTick();
     renderTopbar();

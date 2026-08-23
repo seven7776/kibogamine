@@ -384,3 +384,49 @@ input, select { font-family: inherit; }
   .checkin-grid { grid-template-columns: repeat(3, 1fr); }
   .act-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* ================= 浅色主题（纸张白 · 黑白熊的校刊风） ================= */
+body.theme-light {
+  --bg: #F5F2E9;
+  --surface: #FFFFFF;
+  --surface2: #F3EFE4;
+  --surface3: #EAE5D6;
+  --border: #DCD6C4;
+  --gold: #E8B004;
+  --gold-dim: #9A7B1C;
+  --pink: #E01E5A;
+  --blue: #0E8FC4;
+  --green: #4E7D3A;
+  --red: #D94040;
+  --purple: #7A5BD6;
+  --text: #191A17;
+  --dim: #6E6F68;
+}
+body.theme-light .toast { background: #FFFFFF; color: #191A17; border: 1px solid var(--border); }
+body.theme-light .modal { background: #FFFFFF; }
+body.theme-light .modal-mask { background: rgba(80,75,60,.45); }
+body.theme-light .skel { color: var(--gold-dim); }
+
+/* ================= 横屏/大屏优化（平板） ================= */
+@media (min-width: 760px) {
+  body { font-size: 16px; }
+  #app { max-width: 980px; }
+  .hero { padding: 24px 28px; }
+  .hero h2 { font-size: 28px; }
+  .lesson-hero h2 { font-size: 30px; }
+  .word-chips .chip { font-size: 15px; padding: 7px 15px; }
+  .word-chips .chip.eng { letter-spacing: .3px; }
+  .ex-q .q { font-size: 17px; }
+  #book-embed img, #book-pages img { max-width: 800px; margin: 0 auto; display: block; }
+  .task-row { padding: 12px 14px; }
+  .task-row .txt { font-size: 15px; }
+  .subj-grid, .card-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+}
+/* 手机横屏（高度矮）：压顶栏保内容 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .topbar { padding: 4px 0; }
+  .topbar h1 { font-size: 16px; }
+  .hero { padding: 14px 18px; }
+  #app { padding-top: 8px; }
+}
