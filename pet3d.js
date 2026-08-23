@@ -125,21 +125,53 @@
     mouth.scale.set(1.5, 0.62, 0.28);
     mouth.position.z = -0.02;
     grinG.add(mouth);
-    for (var i = 0; i < 7; i++) {
-      // 圆头胶囊牙 + 每颗轻微明度差/前后错落, 去塑料感
-      var tg = new THREE.CapsuleGeometry(0.045, 0.09, 4, 12);
-      tg.scale(1, 1, 0.55);
-      var tm = teethM.clone();
-      tm.color.multiplyScalar(0.94 + (i % 3) * 0.03);
-      var t = new THREE.Mesh(tg, tm);
-      var fx = (i - 3) * 0.088;
-      // 弧线: 外侧上挑(坏笑), 锯齿交错
-      var arc = Math.pow(Math.abs(i - 3) / 3, 1.6) * 0.13;
-      t.position.set(fx, -0.02 + arc + (i % 2 ? 0.014 : -0.014), 0.11 - Math.pow(Math.abs(i - 3) / 3, 2) * 0.045);
-      t.rotation.z = (i - 3) * -0.13;
-      t.rotation.x = (i % 2 ? 0.06 : -0.04);
-      grinG.add(t);
+    /* 牙齿 v3: 上下交错咬合锯齿(原型图核对: 梯形牙/黑牙缝/嘴角上挑坏笑) */
+    function toothGeo(wTop, wBot, h) { // 圆角梯形(bevel 出圆角)
+      var sh = new THREE.Shape();
+      sh.moveTo(-wTop / 2, h / 2); sh.lineTo(wTop / 2, h / 2);
+      sh.lineTo(wBot / 2, -h / 2); sh.lineTo(-wBot / 2, -h / 2); sh.closePath();
+      var g = new THREE.ExtrudeGeometry(sh, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.010, bevelSize: 0.012, bevelSegments: 2 });
+      g.center();
+      return g;
     }
+    var upGeo = toothGeo(0.118, 0.086, 0.108);   // 上牙: 上宽下窄
+    var dnGeo = toothGeo(0.086, 0.118, 0.108);   // 下牙: 下宽上窄
+    function toothMat(seed) {
+      var tm = teethM.clone();
+      tm.color.multiplyScalar(0.93 + (seed % 3) * 0.035);
+      return tm;
+    }
+    var mU = [toothMat(0), toothMat(1), toothMat(2), toothMat(1), toothMat(0), toothMat(2)];
+    var mD = [toothMat(2), toothMat(0), toothMat(1), toothMat(2), toothMat(0), toothMat(1)];
+    for (var i = 0; i < 6; i++) {
+      var fx = (i - 2.5) * 0.144;
+      var k = Math.abs(i - 2.5) / 2.5;
+      var arc = Math.pow(k, 1.55) * 0.155;                    // 嘴角上挑弧
+      var zz = 0.105 - k * k * 0.055;                          // 弧面进深
+      var shrink = 1 - k * 0.30;                               // 边牙递减
+      // 上排牙: 沿弧线向下
+      var tu = new THREE.Mesh(upGeo, mU[i]);
+      tu.scale.setScalar(shrink);
+      tu.position.set(fx, 0.035 + arc * 0.9, zz);
+      tu.rotation.z = (i - 2.5) * -0.105;
+      tu.rotation.x = -k * 0.22;
+      grinG.add(tu);
+      // 下排牙: 错半步交错 → 锯齿中缝
+      var fx2 = fx + 0.075;
+      var k2 = Math.abs(fx2) / 0.40;
+      var arc2 = Math.pow(Math.min(1, k2), 1.55) * 0.150;
+      var td = new THREE.Mesh(dnGeo, mD[i]);
+      td.scale.setScalar((1 - Math.min(1, k2) * 0.34));
+      td.position.set(fx2, -0.045 + arc2, 0.100 - k2 * k2 * 0.05);
+      td.rotation.z = (fx2 / 0.4) * -0.09;
+      td.rotation.x = k2 * 0.18;
+      grinG.add(td);
+    }
+    /* 口腔加深一圈(包住牙根, 黑缝感) */
+    var mouthRim = new THREE.Mesh(new THREE.SphereGeometry(0.335, 20, 14), plain('#1E0509', 0.55));
+    mouthRim.scale.set(1.52, 0.56, 0.24);
+    mouthRim.position.z = -0.035;
+    grinG.add(mouthRim);
 
     /* 手臂(肩 pivot) */
     function makeArm(side) { // side: -1左(白) +1右(黑)
