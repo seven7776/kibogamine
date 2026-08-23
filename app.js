@@ -338,6 +338,7 @@
         h += '<div class="lesson-row" data-go="' + (l.skeleton ? '' : '#/lesson/' + key + '/' + l.id) + '" data-skel="' + (l.skeleton ? 1 : '') + '">' +
           '<span class="done-mark">' + (st && st.finished ? '🏅' : '·') + '</span>' +
           '<span>' + esc(l.title) + '</span>' +
+          (D.PAGES && D.PAGES[l.id] ? '<a class="book-btn" style="margin-left:auto;text-decoration:none;font-size:19px;line-height:1" href="' + D.PAGES[l.id] + '" target="_blank" rel="noopener" title="看课本原文">📖</a>' : '') +
           (l.skeleton ? '<span class="skel">填充中</span>' : '') + '</div>';
       });
       h += '</div></div>';
@@ -374,6 +375,11 @@
         h += '<p style="margin:0 0 10px;text-indent:2em;font-size:15px;line-height:1.9">' + esc(p) + '</p>';
       });
       h += '</div>';
+    }
+
+    // 课本原文（电子课本页）
+    if (D.PAGES && D.PAGES[l.id]) {
+      h += '<a class="btn" style="display:block;width:100%;text-decoration:none" href="' + D.PAGES[l.id] + '" target="_blank" rel="noopener">📖 课本原文（点开翻页读全文）</a>';
     }
 
     // 预习任务
@@ -733,6 +739,10 @@
         var go = el.getAttribute('data-go');
         if (go) location.hash = go;
       });
+    });
+    // 课行里的📖按钮：直接开书，不进入课文页
+    $$('.book-btn', view).forEach(function (el) {
+      el.addEventListener('click', function (e) { e.stopPropagation(); });
     });
     // 单元折叠
     $$('[data-unit] .unit-head', view).forEach(function (el) {

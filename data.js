@@ -10,7 +10,7 @@
   /* 任务类型: read读 recite背 write写 listen听 speak说 quiz练 observe观察 */
   var CURRICULUM = {
     chinese: {
-      name: '语文', version: '部编版·五上', icon: '语', color: '#FF6B6B', ebook: 'http://www.dzkbw.com/books/rjb/yuwen/xs5s_2019/',
+      name: '语文', version: '部编版·五上', icon: '语', color: '#FF6B6B', ebook: 'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/',
       units: [
         {
           title: '第一单元 · 万物有灵', focus: '借助具体事物抒发感情',
@@ -866,7 +866,7 @@
     },
 
     math: {
-      name: '数学', version: '苏教版·五上', icon: '数', color: '#4CC9F0', ebook: 'http://www.dzkbw.com/books/sjb/shuxue/xs5s/',
+      name: '数学', version: '苏教版·五上', icon: '数', color: '#4CC9F0', ebook: 'http://m.dzkbw.com/books/sjb/shuxue/xs5s/',
       units: [
         {
           title: '第一单元 · 负数的初步认识', focus: '用正负数表示相反意义的量',
@@ -1399,7 +1399,7 @@
     },
 
     english: {
-      name: '英语', version: '译林版·5A', icon: '英', color: '#7FB069', ebook: 'http://www.dzkbw.com/books/yilin/yingyu/5a/',
+      name: '英语', version: '译林版·5A', icon: '英', color: '#7FB069', ebook: 'http://m.dzkbw.com/books/yilin/yingyu/5a/',
       units: [
         {
           title: 'Unit 1 Goldilocks and the three bears', focus: 'There be句型；too+形容词',
@@ -1815,8 +1815,62 @@
     { id: 'sports',  name: '运动',     icon: '🏃', points: 10 }
   ];
 
+  /* 每课 → 电子课本页（m.dzkbw.com 手机版, 逐页扫描图）
+   * 语文: 目录逐条核对; 数学: 单元起始页(004/010/033/051/058/087/097/102/113 实测标题钉死); 英语: 单元起始页 */
+  var PAGES = {
+    'yw1-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/007.htm','yw1-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/009.htm',
+    'yw1-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/011.htm','yw1-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/014.htm',
+    'yw1-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/016.htm','yw1-6':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/017.htm',
+    'yw2-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/021.htm','yw2-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/023.htm',
+    'yw2-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/027.htm','yw2-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/030.htm',
+    'yw2-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/033.htm',
+    'yw3-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/037.htm','yw3-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/040.htm',
+    'yw3-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/045.htm','yw3-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/048.htm',
+    'yw3-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/049.htm','yw3-6':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/052.htm',
+    'yw4-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/055.htm','yw4-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/057.htm',
+    'yw4-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/059.htm','yw4-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/063.htm',
+    'yw4-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/067.htm',
+    'yw5-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/071.htm','yw5-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/073.htm',
+    'yw5-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/079.htm',
+    'yw6-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/081.htm','yw6-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/085.htm',
+    'yw6-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/089.htm','yw6-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/092.htm',
+    'yw6-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/093.htm',
+    'yw7-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/097.htm','yw7-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/098.htm',
+    'yw7-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/099.htm','yw7-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/102.htm',
+    'yw7-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/105.htm',
+    'yw8-1':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/109.htm','yw8-2':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/111.htm',
+    'yw8-3':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/114.htm','yw8-4':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/117.htm',
+    'yw8-5':'http://m.dzkbw.com/books/rjb/yuwen/xs5s_2019/118.htm',
+    'sx1-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/004.htm','sx1-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/004.htm',
+    'sx2-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/010.htm','sx2-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/010.htm',
+    'sx2-3':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/010.htm','sx2-4':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/010.htm',
+    'sx2-5':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/010.htm',
+    'sx3-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/033.htm','sx3-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/033.htm',
+    'sx3-3':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/033.htm',
+    'sx4-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/051.htm','sx4-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/051.htm',
+    'sx4-3':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/051.htm',
+    'sx5-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/058.htm','sx5-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/058.htm',
+    'sx5-3':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/058.htm','sx5-4':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/058.htm',
+    'sx5-5':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/058.htm','sx5-6':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/058.htm',
+    'sx6-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/087.htm','sx6-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/087.htm',
+    'sx7-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/097.htm',
+    'sx8-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/102.htm','sx8-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/102.htm',
+    'sx9-1':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/113.htm','sx9-2':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/113.htm',
+    'sx9-3':'http://m.dzkbw.com/books/sjb/shuxue/xs5s/113.htm',
+    'yy1-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/008.htm','yy1-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/008.htm',
+    'yy1-3':'http://m.dzkbw.com/books/yilin/yingyu/5a/008.htm','yy1-4':'http://m.dzkbw.com/books/yilin/yingyu/5a/008.htm',
+    'yy2-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/018.htm','yy2-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/018.htm',
+    'yy3-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/028.htm','yy3-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/028.htm',
+    'yy4-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/038.htm','yy4-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/038.htm',
+    'yy5-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/050.htm','yy5-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/050.htm',
+    'yy6-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/060.htm','yy6-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/060.htm',
+    'yy7-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/070.htm','yy7-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/070.htm',
+    'yy8-1':'http://m.dzkbw.com/books/yilin/yingyu/5a/080.htm','yy8-2':'http://m.dzkbw.com/books/yilin/yingyu/5a/080.htm'
+  };
+
   window.KBG_DATA = {
     CURRICULUM: CURRICULUM,
+    PAGES: PAGES,
     DEFAULT_SCHEDULE: DEFAULT_SCHEDULE,
     DEFAULT_CHECKINS: DEFAULT_CHECKINS
   };
