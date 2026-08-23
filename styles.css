@@ -372,13 +372,15 @@ input, select { font-family: inherit; }
 
 /* ---------- 横屏/平板: 左侧导航 ---------- */
 @media (min-width: 760px) {
-  #app { max-width: 860px; padding-left: 108px; }
+  #app { max-width: 900px; padding-left: 130px; }
   .tabbar {
-    left: 0; right: auto; top: 0; bottom: 0; width: 88px; height: auto;
+    left: 0; right: auto; top: 0; bottom: 0; width: 112px; height: auto;
     flex-direction: column; border-top: none; border-right: 1px solid var(--border);
-    padding-top: 20px; justify-content: flex-start; gap: 6px;
+    padding-top: 16px; justify-content: flex-start; gap: 10px;
   }
-  .tabbar a { flex: none; width: 100%; padding: 10px 0; }
+  .tabbar a { flex: none; width: 100%; padding: 14px 0; font-size: 14px; gap: 5px; }
+  .tabbar a .ti { font-size: 32px; }
+  .tabbar a.on .ti { transform: scale(1.12); }
   #roamer { bottom: 20px; }
   .course-grid { grid-template-columns: repeat(3, 1fr); }
   .checkin-grid { grid-template-columns: repeat(3, 1fr); }
@@ -430,3 +432,6 @@ body.theme-light .skel { color: var(--gold-dim); }
   .hero { padding: 14px 18px; }
   #app { padding-top: 8px; }
 }
+
+/* 浅色主题下的导航底色 */
+body.theme-light .tabbar { background: rgba(250,248,241,.94); }
