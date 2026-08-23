@@ -1798,7 +1798,7 @@
     },
 
     science: {
-      name: '科学', version: '苏教版·五上', icon: '🔬', color: '#5AC8FA',
+      name: '科学', version: '苏教版·五上', icon: '科', color: '#5AC8FA',
       units: [
         { title: '1 光与色彩', focus: '按课本学习', lessons: [
             { id: 'kx1-1', title: '1 光源', focus: '1 光与色彩', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
@@ -1837,7 +1837,7 @@
     },
 
     moral: {
-      name: '道德与法治', version: '统编版·五上', icon: '⚖️', color: '#FF9F6B',
+      name: '道德与法治', version: '统编版·五上', icon: '道', color: '#FF9F6B',
       units: [
         { title: '第一单元 · 面对成长中的新问题', focus: '按课本学习', lessons: [
             { id: 'dd1-1', title: '1 自主选择课余生活', focus: '第一单元 · 面对成长中的新问题', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
@@ -1860,10 +1860,10 @@
       ]
     },
 
-    music: { name: '音乐', version: '版本待开学核对', icon: '🎵', color: '#E58BD8', units: [], pending: true },
-    art: { name: '美术', version: '版本待开学核对', icon: '🎨', color: '#F2B33D', units: [], pending: true },
-    it: { name: '信息科技', version: '版本待开学核对', icon: '💻', color: '#6BD3C7', units: [], pending: true },
-    labor: { name: '劳动', version: '版本待开学核对', icon: '🛠️', color: '#A8B4C4', units: [], pending: true }
+    music: { name: '音乐', version: '版本待开学核对', icon: '音', color: '#E58BD8', units: [], pending: true },
+    art: { name: '美术', version: '版本待开学核对', icon: '美', color: '#F2B33D', units: [], pending: true },
+    it: { name: '信息科技', version: '版本待开学核对', icon: '信', color: '#6BD3C7', units: [], pending: true },
+    labor: { name: '劳动', version: '版本待开学核对', icon: '劳', color: '#A8B4C4', units: [], pending: true }
 
   };
 
@@ -1881,7 +1881,8 @@
     { id: 'guitar',  name: '弹吉他',   icon: '🎸', points: 10 },
     { id: 'reading', name: '课外阅读', icon: '📖', points: 10 },
     { id: 'chores',  name: '做家务',   icon: '🧹', points: 10 },
-    { id: 'sports',  name: '运动',     icon: '🏃', points: 10 }
+    { id: 'sports',  name: '运动',     icon: '🏃', points: 10 },
+    { id: 'supplies', name: '整理学具', icon: '🎒', points: 5 }
   ];
 
   /* 每课 → 电子课本页（m.dzkbw.com 手机版, 逐页扫描图）

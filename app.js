@@ -25,7 +25,7 @@
       },
       study: {},          // lessonId -> {tasks:{}, finished, finishedAt}
       checkins: { items: D.DEFAULT_CHECKINS.slice(), log: {} }, // log: date -> {itemId:1}
-      schedule: { grid: JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE)), extra: [] },
+      schedule: { grid: JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE)), extra: [], times: ['08:20', '09:10', '10:05', '10:55', '14:00', '14:50', '15:40', '16:25'] },
       badges: {},         // badgeId -> date
       counters: { guitarDays: 0, lessonsDone: 0, feeds: 0 }
     };
@@ -36,6 +36,7 @@
     S = JSON.parse(localStorage.getItem(LS_KEY)) || defaultState();
   } catch (e) { S = defaultState(); }
   if (!S.pet || !S.schedule) S = defaultState();
+  if (!S.schedule.times) S.schedule.times = ['08:20', '09:10', '10:05', '10:55', '14:00', '14:50', '15:40', '16:25'];
 
   function save() { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
 
@@ -402,6 +403,32 @@
     return p.hunger < 30 || p.thirst < 30 || p.mood < 30 || p.energy < 20;
   }
 
+  /* ================= 小屋场景 ================= */
+  var sceneTimer = null;
+  function setScene(name, ms) {
+    var house = $('#bear-house');
+    if (!house) return;
+    house.className = 'bear-house scene-' + name;
+    if (sceneTimer) clearTimeout(sceneTimer);
+    if (ms) sceneTimer = setTimeout(function () {
+      var h2 = $('#bear-house');
+      if (h2 && !S.pet.sleeping) h2.className = 'bear-house scene-living';
+    }, ms);
+  }
+  /* 互动彩蛋：每天第5/10/15次互动掉奖章 */
+  function interactBonus() {
+    var t = dkey();
+    if (S._interactDay !== t) { S._interactDay = t; S._interacts = 0; }
+    S._interacts = (S._interacts || 0) + 1;
+    if (S._interacts % 5 === 0) {
+      setTimeout(function () {
+        S.points += 2; save(); updateMedalPill();
+        sfx('earn');
+        toast('🐻 黑白熊偷偷塞给你 2 枚奖章！（今日互动第' + S._interacts + '次）');
+      }, 1800);
+    }
+  }
+
   /* 气泡台词（萌宠页舞台） */
   var sayTimer = null;
   function say(text) {
@@ -415,11 +442,11 @@
 
   /* ================= 徽章 ================= */
   var BADGES = {
-    first_lesson: { name: '希望的曙光', desc: '完成第一课' },
-    streak7: { name: '坚持的一周', desc: '连续活跃7天' },
-    first_skin: { name: '换装达人', desc: '拥有第一款皮肤' },
-    guitar7: { name: '摇滚新星', desc: '吉他打卡满7天（解锁草裙吉他皮肤）' },
-    lv5: { name: '羁绊之力', desc: '羁绊达到Lv.5' }
+    first_lesson: { name: '希望的曙光', desc: '完成第一课', color: '#FFD24D' },
+    streak7: { name: '坚持的一周', desc: '连续活跃7天', color: '#5AD1A0' },
+    first_skin: { name: '换装达人', desc: '拥有第一款皮肤', color: '#B892FF' },
+    guitar7: { name: '摇滚新星', desc: '吉他打卡满7天', color: '#FF8A4C' },
+    lv5: { name: '羁绊之力', desc: '羁绊达到Lv.5', color: '#4CC9F0' }
   };
   function grantBadge(id) {
     if (S.badges[id]) return;
@@ -447,14 +474,14 @@
       var r = S.study[lid];
       return r && r.finishedAt && r.finishedAt.slice(0, 10) === t;
     });
-    tasks.push({ id: '_study', subj: '学习', color: 'var(--pink)', text: '完成任意一课跟课学习', pts: 20, done: learnedToday, go: '#/study' });
+    tasks.push({ id: '_study', subj: '学习', color: 'var(--pink)', text: '完成任意一课跟课学习', short: '跟课学习', pts: 20, done: learnedToday, go: '#/study' });
     // 打卡项
     var log = S.checkins.log[t] || {};
     S.checkins.items.forEach(function (it) {
-      tasks.push({ id: it.id, subj: '打卡', color: 'var(--green)', text: it.name, pts: it.points, done: !!log[it.id], go: '#/checkin' });
+      tasks.push({ id: it.id, subj: '打卡', color: 'var(--green)', text: it.name, short: it.name, pts: it.points, done: !!log[it.id], go: '#/checkin' });
     });
     // 萌宠
-    tasks.push({ id: '_pet', subj: '萌宠', color: 'var(--gold)', text: '照顾黑白熊（喂食/互动）', pts: 0, done: S.counters.feeds > 0 && S._feedDay === t, go: '#/pet' });
+    tasks.push({ id: '_pet', subj: '萌宠', color: 'var(--gold)', text: '照顾黑白熊', short: '黑白熊', pts: 0, done: S.counters.feeds > 0 && S._feedDay === t, go: '#/pet' });
     return tasks;
   }
 
@@ -494,6 +521,7 @@
       var seen = {};
       courses.forEach(function (name) {
         var sk = subjOfCourse(name);
+        if (!sk) return;            // 首页只展示语数英主科
         if (seen[name]) return; seen[name] = 1;
         var color = sk ? D.CURRICULUM[sk].color : 'var(--dim)';
         h += '<div class="course-card" data-go="' + (sk ? '#/study' : '#/schedule') + '">' +
@@ -506,15 +534,15 @@
       h += '<div class="card"><div class="empty-tip">今天没有学校课程，去打卡或陪' + esc(S.pet.name) + '玩吧</div></div>';
     }
 
-    // 今日任务
-    h += '<div class="section-title">今日任务<span class="sub">' + done + '/' + tasks.length + '</span></div>';
+    // 今日任务（8宫格方块，两行四列）
+    h += '<div class="section-title">今日任务<span class="sub">' + done + '/' + tasks.length + '</span></div><div class="task-grid">';
     tasks.forEach(function (t) {
-      h += '<div class="task-row' + (t.done ? ' done' : '') + '" data-go="' + t.go + '">' +
+      h += '<div class="task-tile' + (t.done ? ' done' : '') + '" data-go="' + t.go + '">' +
         '<div class="chk">✓</div>' +
-        '<span class="badge-subj" style="background:rgba(255,255,255,.06);color:' + t.color + '">' + t.subj + '</span>' +
-        '<span class="txt">' + esc(t.text) + '</span>' +
-        (t.pts ? '<span class="pts">+' + t.pts + '</span>' : '') + '</div>';
+        '<b>' + esc(t.short || t.text) + '</b>' +
+        '<span class="pts">' + (t.pts ? '+' + t.pts : '❤') + '</span></div>';
     });
+    h += '</div>';
 
     // 数据
     var weekLearned = Object.keys(S.study).filter(function (lid) {
@@ -527,21 +555,24 @@
       '<div class="stat-cell gold"><b>' + S.points + '</b><span>黑白熊奖章</span></div>' +
       '<div class="stat-cell"><b>Lv.' + petLevel() + '</b><span>羁绊等级</span></div></div>';
 
-    // 徽章墙
+    // 徽章墙（大图标，未获得的灰显锁定）
     var owned = Object.keys(S.badges);
-    if (owned.length) {
-      h += '<div class="section-title">徽章墙</div><div class="card"><div class="word-chips">';
-      owned.forEach(function (id) {
-        h += '<span class="chip" style="border-color:var(--gold-dim);color:var(--gold)">🏅 ' + BADGES[id].name + '</span>';
-      });
-      h += '</div></div>';
-    }
+    h += '<div class="section-title">徽章墙<span class="sub">' + owned.length + '/' + Object.keys(BADGES).length + '</span></div><div class="card"><div class="badge-grid">';
+    Object.keys(BADGES).forEach(function (id) {
+      var b = BADGES[id], has = !!S.badges[id];
+      h += '<div class="badge-cell' + (has ? '' : ' lock') + '">' +
+        '<span class="medal" style="--mc:' + (b.color || '#FFD24D') + '">' +
+        '<svg viewBox="0 0 48 56"><path d="M14 2h20l-4 12h-12z" fill="#C43B5E"/><circle cx="24" cy="32" r="18" fill="var(--mc)" stroke="rgba(0,0,0,.25)" stroke-width="2"/><path d="M24 20l3.2 6.6 7.2 1-5.2 5.1 1.2 7.2L24 36.4l-6.4 3.5 1.2-7.2-5.2-5.1 7.2-1z" fill="rgba(255,255,255,.85)"/><path d="M12 52l3-6h6l-3 6z" fill="var(--mc)"/><path d="M36 52l-3-6h-6l3 6z" fill="var(--mc)"/></svg></span>' +
+        '<b>' + b.name + '</b><i>' + (has ? b.desc : '未解锁') + '</i></div>';
+    });
+    h += '</div></div>';
     return h;
   }
 
   /* ---------- 学习·学科列表 ---------- */
   function renderStudy() {
     var h = '<div class="section-title">跟课学习<span class="sub">江苏南通·五年级上册</span></div>';
+    h += '<div class="subj-grid3">';
     Object.keys(D.CURRICULUM).forEach(function (key) {
       var s = D.CURRICULUM[key];
       var total = 0, done = 0;
@@ -552,12 +583,13 @@
           if (S.study[l.id] && S.study[l.id].finished) done++;
         });
       });
-      h += '<div class="subj-card" data-go="#/subject/' + key + '">' +
-        '<div class="subj-icon" style="background:' + s.color + '22;color:' + s.color + ';border:1px solid ' + s.color + '55">' + s.icon + '</div>' +
-        '<div class="meta"><b>' + s.name + '</b><div>' + s.version + ' · 已完成 ' + done + '/' + total + ' 课</div></div>' +
-        '<span class="arrow">›</span></div>';
+    h += '<div class="subj-tile' + (s.pending ? ' pending' : '') + '" data-go="#/subject/' + key + '">' +
+      '<div class="subj-icon" style="background:' + s.color + '26;color:' + s.color + ';border:2px solid ' + s.color + '66">' + s.icon + '</div>' +
+      '<b>' + s.name + '</b>' +
+      '<div class="pv">' + (total ? done + '/' + total + ' 课' : '待建设') + '</div>' +
+      '<div class="pbar"><i style="width:' + (total ? Math.round(done / total * 100) : 0) + '%"></i></div></div>';
     });
-    h += '<div class="hint">九科齐了：语数英内容全量；科学/道法目录+课本页就绪，知识点练习本周补；音乐/美术/信息科技/劳动等开学核对版本后建。</div>';
+    h += '</div><div class="hint">九科齐了：语数英内容全量；科学/道法目录+课本页就绪；音乐/美术/信息科技/劳动等开学核对版本后建。</div>';
     return h;
   }
 
@@ -705,29 +737,42 @@
   var DOW_NAME = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   function renderSchedule() {
     var dow = todayDow();
-    var h = '<div class="section-title">我的课表<span class="sub">点格子可改</span></div>';
-    h += '<div class="card"><div class="sched-table"><div class="hd"></div>';
-    for (var d = 1; d <= 5; d++) h += '<div class="hd"' + (d === dow ? ' style="text-shadow:0 0 8px var(--gold)"' : '') + '>' + DOW_NAME[d] + '</div>';
-    for (var p = 0; p < 6; p++) {
-      h += '<div class="period">第' + (p + 1) + '节</div>';
+    var T = S.schedule.times;
+    var wdColor = { 1: '#FF6B6B', 2: '#FF9F6B', 3: '#E8B004', 4: '#5AD1A0', 5: '#4CC9F0' };
+    function band(label, sub, cls) {
+      return '<div class="sched-band ' + (cls || '') + '"><b>' + label + '</b><span>' + sub + '</span></div>';
+    }
+    function row(pi) {
+      var hh = '<div class="srow">' +
+        '<div class="sno"><i>' + (pi + 1) + '</i><u data-edit-time="' + pi + '">' + esc(T[pi] || '设置') + '</u></div>';
       for (var dd = 1; dd <= 5; dd++) {
-        var name = (S.schedule.grid[dd] && S.schedule.grid[dd][p]) || '';
-        h += '<div class="sched-cell' + (dd === dow ? ' today-col' : '') + '" data-edit-cell="' + dd + ',' + p + '">' + esc(name) + '</div>';
+        var name = S.schedule.grid[dd][pi] || '';
+        var isToday = dd === dow && dow <= 5;
+        hh += '<div class="scell' + (isToday ? ' today' : '') + '" data-edit-cell="' + dd + ',' + pi + '">' +
+          (name ? '<span class="dot" style="background:' + (subjOfCourse(name) ? D.CURRICULUM[subjOfCourse(name)].color : '#9AA0AA') + '"></span>' + esc(name) : '') + '</div>';
       }
+      return hh + '</div>';
     }
-    h += '</div><div class="sched-hint">开学拿到五年级新课表后，点格子直接改。高亮列是今天。</div></div>';
+    var h = '<div class="section-title">我的课表<span class="sub">点格子改课程 · 点时间改时间</span></div>';
+    h += '<div class="card sched2"><div class="srow head"><div class="shd-slot"></div>';
+    for (var dd2 = 1; dd2 <= 5; dd2++) {
+      h += '<div class="shd' + (dd2 === dow ? ' today' : '') + '" style="--wc:' + wdColor[dd2] + '">' + DOW_NAME[dd2] + '</div>';
+    }
+    h += '</div>';
+    h += band('上午', '第 1 ~ 4 节', 'am');
+    for (var i = 0; i < 4; i++) h += row(i);
+    h += band('午休', '12:00 - 14:00 · 吃饭 午睡 充电', 'noon');
+    h += band('下午', '第 5 ~ 8 节', 'pm');
+    for (var j = 4; j < 8; j++) h += row(j);
+    h += '<div class="sched-hint">开学拿到五年级新课表后，点格子直接改；时间是估的，点时间就能改。</div></div>';
 
-    // 课外班
-    h += '<div class="section-title">课外班<span class="sub">钢琴/吉他/别的班都记这</span></div>';
-    if (S.schedule.extra.length) {
-      S.schedule.extra.forEach(function (x, i) {
-        h += '<div class="extra-item"><b>' + esc(x.name) + '</b><span class="time">' + DOW_NAME[x.dow] + ' ' + esc(x.start) + '-' + esc(x.end) + '</span>' +
-          '<button class="del" data-del-extra="' + i + '">✕</button></div>';
-      });
-    } else {
-      h += '<div class="card"><div class="empty-tip">还没加课外班，点下面按钮加一个</div></div>';
-    }
-    h += '<button class="btn" style="width:100%" id="add-extra">+ 添加课外班</button>';
+    h += '<div class="section-title">课外班<span class="sub">点方块编辑</span></div><div class="extra-grid">';
+    S.schedule.extra.forEach(function (ex, xi) {
+      h += '<div class="extra-tile" data-edit-extra="' + xi + '"><b>' + esc(ex.name) + '</b>' +
+        '<div class="t">' + esc(DOW_NAME[ex.dow] + ' ' + (ex.start || '') + (ex.end ? '-' + ex.end : '')) + '</div>' +
+        '<button class="del" data-del-extra="' + xi + '">删</button></div>';
+    });
+    h += '<div class="extra-tile add" id="add-extra"><b>＋</b><div class="t">添加课外班</div></div></div>';
     return h;
   }
 
@@ -778,7 +823,17 @@
     var h = '<div class="pet-name-row"><b>' + esc(p.name) + '</b>' +
       '<span class="lv">Lv.' + petLevel() + ' ' + petLevelName() + '</span>' +
       '<button class="rename" id="rename-pet">改名</button></div>';
-    h += '<div class="pet-stage"><div class="bubble" id="pet-bubble" style="display:none"></div><canvas id="pet-canvas" data-scale="7"></canvas></div>';
+    h += '<div class="bear-house" id="bear-house">' +
+      '<div class="bh-wall"><div class="bh-window"><i class="win-sun"></i><i class="win-moon"></i><i class="win-star s1"></i><i class="win-star s2"></i><i class="win-star s3"></i></div><div class="bh-picture"></div></div>' +
+      '<div class="bh-floor"></div>' +
+      '<div class="bh-prop bh-bowl"></div>' +
+      '<div class="bh-prop bh-bed"><i class="pillow"></i><i class="blanket"></i></div>' +
+      '<div class="bh-prop bh-ball"></div>' +
+      '<div class="bh-prop bh-book"></div>' +
+      '<div class="bh-prop bh-cup"></div>' +
+      '<div class="bh-rug"></div>' +
+      '<div class="bubble" id="pet-bubble" style="display:none"></div>' +
+      '<canvas id="pet-canvas" data-scale="7"></canvas></div>';
 
     h += '<div class="stat-bars">' +
       statBar('饱腹', p.hunger, 'hunger') +
@@ -794,6 +849,7 @@
       { id: 'roll', ic: '🔄', name: '翻身', cost: 5 },
       { id: 'sleep', ic: '😴', name: p.sleeping ? '叫醒' : '哄睡觉', cost: p.sleeping ? 0 : 8 },
       { id: 'play', ic: '🎮', name: '陪玩', cost: 0 },
+      { id: 'bearstudy', ic: '📖', name: '陪学习', cost: 0 },
       { id: 'skin', ic: '🎨', name: '换皮肤', cost: 0 }
     ];
     h += '<div class="section-title">互动<span class="sub">花奖章，长羁绊</span></div><div class="act-grid">';
@@ -803,6 +859,8 @@
         '<span class="cost">' + (a.cost ? '-' + a.cost + '奖章' : '免费') + '</span></button>';
     });
     h += '</div>';
+
+    h += '<a class="btn" style="display:block;width:100%;text-decoration:none;margin:10px 0" href="#/study">📖 带黑白熊去学习</a>';
 
     // 皮肤图鉴
     h += '<div class="section-title">皮肤图鉴<span class="sub">点皮肤穿上/解锁</span></div><div class="skin-grid">';
@@ -933,42 +991,49 @@
         if (!spend(5)) return;
         p.hunger = Math.min(100, p.hunger + 25); p.mood = Math.min(100, p.mood + 3);
         addXp(5); S.counters.feeds++; S._feedDay = dkey();
-        sfx('feed'); after('eat', quote('feed')); break;
+        sfx('feed'); setScene('eating', 7000); interactBonus(); after('eat', quote('feed')); break;
       case 'drink':
         if (!spend(3)) return;
         p.thirst = Math.min(100, p.thirst + 25);
         addXp(3); S.counters.feeds++; S._feedDay = dkey();
-        sfx('drink'); after('eat', quote('drink')); break;
+        sfx('drink'); setScene('drinking', 6000); interactBonus(); after('eat', quote('drink')); break;
       case 'snack':
         if (!spend(10)) return;
         p.hunger = Math.min(100, p.hunger + 10); p.mood = Math.min(100, p.mood + 10);
         addXp(6);
-        sfx('snack'); after('happy', quote('snack')); break;
+        sfx('snack'); setScene('snacking', 6000); interactBonus(); after('happy', quote('snack')); break;
       case 'tickle':
         if (!spend(5)) return;
         p.mood = Math.min(100, p.mood + 20);
         addXp(5);
-        sfx('tickle'); after('giggle', quote('tickle')); break;
+        sfx('tickle'); setScene('playing', 5000); interactBonus(); after('giggle', quote('tickle')); break;
       case 'roll':
         if (!spend(5)) return;
         p.mood = Math.min(100, p.mood + 8);
         addXp(4);
-        sfx('roll'); after('back', quote('roll')); break;
+        sfx('roll'); setScene('playing', 5000); interactBonus(); after('back', quote('roll')); break;
       case 'sleep':
         if (p.sleeping) {
           p.sleeping = false;
-          sfx('wake'); after('idle', quote('wake'), 800);
+          sfx('wake'); setScene('living', 0); after('idle', quote('wake'), 800);
         } else {
           if (!spend(8)) return;
           p.sleeping = true;
           addXp(4);
-          sfx('sleep'); after('sleep', quote('sleep'), 60000);
+          sfx('sleep'); setScene('sleeping', 0); after('sleep', quote('sleep'), 60000);
         }
         break;
       case 'play':
         p.mood = Math.min(100, p.mood + 6);
         addXp(2);
-        sfx('bear'); after('happy', quote('tap'), 1800);
+        sfx('bear'); setScene('playing', 5000); interactBonus(); after('happy', quote('tap'), 1800);
+        break;
+      case 'bearstudy':
+        p.mood = Math.min(100, p.mood + 4);
+        addXp(3);
+        sfx('check'); setScene('studying', 15000);
+        say('本校长陪你读书！学完这课奖励翻倍哦～');
+        after('sit', '一起去学习吧！点下面"去学习"按钮。', 15000);
         break;
       case 'skin':
         document.querySelector('.skin-grid').scrollIntoView({ behavior: 'smooth' });
@@ -1043,19 +1108,19 @@
   }
 
   /* ================= 路由 ================= */
-  var TABS = [
-    { hash: '#/home', name: '首页', svg: '<svg viewBox="0 0 24 24"><path d="M3.5 11.2 12 4l8.5 7.2" fill="none" stroke="#FF8A4C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10.5V20h13v-9.5" fill="#FFB073" stroke="#FF8A4C" stroke-width="1.4" stroke-linejoin="round"/><rect x="10.2" y="14.5" width="3.6" height="5.5" rx="0.6" fill="#8A4A20"/></svg>' },
-    { hash: '#/study', name: '学习', svg: '<svg viewBox="0 0 24 24"><path d="M12 6.2C10 4.8 7 4.3 4 4.8v13.5c3-.5 6 0 8 1.4 2-1.4 5-1.9 8-1.4V4.8c-3-.5-6 0-8 1.4z" fill="#4CC9F0"/><path d="M12 6.2v13.5" stroke="#0E8FC4" stroke-width="1.3"/><path d="M6.3 8.4c1.6-.2 3.2 0 4.4.6M6.3 11.4c1.6-.2 3.2 0 4.4.6M13.3 9c1.2-.6 2.8-.8 4.4-.6M13.3 11.9c1.2-.6 2.8-.8 4.4-.6" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".85"/></svg>' },
-    { hash: '#/schedule', name: '课表', svg: '<svg viewBox="0 0 24 24"><rect x="3.2" y="4.6" width="17.6" height="16.2" rx="2.2" fill="#5AD1A0"/><rect x="3.2" y="4.6" width="17.6" height="4.2" rx="2.2" fill="#2FA97E"/><rect x="6.8" y="2.6" width="2.1" height="4.4" rx="1" fill="#1E7A5C"/><rect x="15.1" y="2.6" width="2.1" height="4.4" rx="1" fill="#1E7A5C"/><rect x="6.6" y="11" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="10.5" y="11" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="14.4" y="11" width="3" height="2.6" rx=".7" fill="#FF6B6B"/><rect x="6.6" y="15.2" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="10.5" y="15.2" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="14.4" y="15.2" width="3" height="2.6" rx=".7" fill="#fff"/></svg>' },
-    { hash: '#/checkin', name: '打卡', svg: '<svg viewBox="0 0 24 24"><path d="M12 2.8l2.7 5.9 6.4.7-4.8 4.4 1.3 6.3L12 16.8l-5.6 3.3 1.3-6.3L2.9 9.4l6.4-.7z" fill="#FFD24D" stroke="#E8A800" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
-    { hash: '#/pet', name: '黑白熊', svg: '<svg viewBox="0 0 24 24"><circle cx="7" cy="4.6" r="3.1" fill="#fff" stroke="#141414" stroke-width="1.4"/><circle cx="17" cy="4.6" r="3.1" fill="#141414" stroke="#141414" stroke-width="1.4"/><path d="M12 5.4c5 0 9 3.7 9 8.2 0 4.4-4 7.4-9 7.4s-9-3-9-7.4c0-4.5 4-8.2 9-8.2z" fill="#fff" stroke="#141414" stroke-width="1.4"/><path d="M12 5.4c5 0 9 3.7 9 8.2 0 4.4-4 7.4-9 7.4z" fill="#141414"/><circle cx="8.2" cy="12.2" r="1.7" fill="#141414"/><path d="M15.8 10.8l2.3 1.5-1 2.4-2.2-1.1z" fill="#FF3E6C"/><path d="M7.2 16.4c1.5 1.3 3.2 1.9 4.8 1.9" fill="none" stroke="#141414" stroke-width="1.3" stroke-linecap="round"/><path d="M16 16.6l2.4-.3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>' },
-    { hash: '#/settings', name: '设置', svg: '<svg viewBox="0 0 24 24"><g fill="#9AA8BD"><rect x="10.6" y="1.8" width="2.8" height="4.2" rx="1.2"/><rect x="10.6" y="18" width="2.8" height="4.2" rx="1.2"/><rect x="1.8" y="10.6" width="4.2" height="2.8" rx="1.2"/><rect x="18" y="10.6" width="4.2" height="2.8" rx="1.2"/><rect x="10.6" y="1.8" width="2.8" height="4.2" rx="1.2" transform="rotate(45 12 12)"/><rect x="10.6" y="18" width="2.8" height="4.2" rx="1.2" transform="rotate(45 12 12)"/><rect x="1.8" y="10.6" width="4.2" height="2.8" rx="1.2" transform="rotate(-45 12 12)"/><rect x="18" y="10.6" width="4.2" height="2.8" rx="1.2" transform="rotate(-45 12 12)"/></g><circle cx="12" cy="12" r="6.4" fill="#9AA8BD"/><circle cx="12" cy="12" r="3" fill="#5F6E84"/></svg>' }
+    var TABS = [
+    { hash: '#/home', icon: '🏠', bg: '#FF8A4C', name: '首页' },
+    { hash: '#/study', icon: '📚', bg: '#4CC9F0', name: '学习' },
+    { hash: '#/schedule', icon: '📅', bg: '#5AD1A0', name: '课表' },
+    { hash: '#/checkin', icon: '⭐', bg: '#FFD24D', name: '打卡' },
+    { hash: '#/pet', icon: '🐻', bg: '#FF7B9C', name: '黑白熊' },
+    { hash: '#/settings', icon: '⚙️', bg: '#9AA8BD', name: '设置' }
   ];
   function renderTabbar(route) {
     var bar = $('#tabbar');
     bar.innerHTML = TABS.map(function (t) {
       var on = route.indexOf(t.hash) === 0 || (t.hash === '#/study' && (route.indexOf('#/lesson') === 0 || route.indexOf('#/subject') === 0 || route.indexOf('#/bookview') === 0));
-      return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti">' + (t.svg || t.icon) + '</span>' + t.name + '</a>';
+      return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti" style="background:' + t.bg + '">' + t.icon + '</span>' + t.name + '</a>';
     }).join('');
   }
 
@@ -1312,6 +1377,37 @@
         setTimeout(function () { var i = $('#cell-input'); if (i) i.focus(); }, 50);
       });
     });
+    // 课外班方块编辑
+    $$('[data-edit-extra]', view).forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.target.hasAttribute('data-del-extra')) return;
+        var xi = +el.getAttribute('data-edit-extra');
+        var ex = S.schedule.extra[xi];
+        if (!ex) return;
+        modal('改课外班',
+          '<input id="ex-name" value="' + esc(ex.name) + '" placeholder="名字" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text);margin-bottom:8px">' +
+          '<input id="ex-start" value="' + esc(ex.start || '') + '" placeholder="开始 如 18:30" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text);margin-bottom:8px">' +
+          '<input id="ex-end" value="' + esc(ex.end || '') + '" placeholder="结束 如 20:00" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text)">',
+          function () {
+            S.schedule.extra[xi].name = $('#ex-name').value.trim() || '课外班';
+            S.schedule.extra[xi].start = $('#ex-start').value.trim();
+            S.schedule.extra[xi].end = $('#ex-end').value.trim();
+            save(); render();
+          });
+      });
+    });
+    // 节次时间编辑
+    $$('[data-edit-time]', view).forEach(function (el) {
+      el.addEventListener('click', function () {
+        var pi = +el.getAttribute('data-edit-time');
+        modal('改第' + (pi + 1) + '节时间',
+          '<input id="ti-in" value="' + esc(S.schedule.times[pi] || '') + '" placeholder="如 08:20" style="width:100%;padding:10px;font-size:18px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text)">',
+          function () {
+            S.schedule.times[pi] = $('#ti-in').value.trim() || S.schedule.times[pi];
+            save(); render();
+          });
+      });
+    });
     // 课外班
     var ae = $('#add-extra', view);
     if (ae) ae.addEventListener('click', function () {
@@ -1412,6 +1508,8 @@
           if (n) { S.pet.name = n; save(); render(); }
         });
       });
+      setScene(S.pet.sleeping ? 'sleeping' : 'living');
+
     } else {
       petPlayer = null;
     }
