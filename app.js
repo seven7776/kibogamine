@@ -79,8 +79,52 @@
       case 'done': [523, 659, 784, 1047].forEach(function (f, i) { tone(f, .16, i * .1, 'triangle', .15); }); tone(1568, .28, .44, 'sine', .09); break;
       case 'buy': tone(392, .1, 0, 'square', .06); tone(523, .14, .09, 'square', .06); break;
       case 'levelup': [392, 523, 659, 784, 1047].forEach(function (f, i) { tone(f, .14, i * .09, 'triangle', .14); }); break;
-      case 'sad': tone(300, .18, 0, 'sawtooth', .05); tone(220, .26, .14, 'sawtooth', .05); break;
+      case 'sad': sweep(300, 180, .3, 0, 'sawtooth', .05); tone(150, .3, .3, 'sawtooth', .05); break;
+      /* ---- 萌宠玩法专属音效 ---- */
+      case 'feed': noise(.08, 0, .22, 1000); noise(.08, .17, .22, 750); noise(.11, .36, .24, 520); sweep(320, 120, .3, .55, 'sine', .2); break; /* 吧唧吧唧+吞咽 */
+      case 'drink': sweep(560, 170, .2, 0, 'sine', .22); sweep(640, 190, .22, .3, 'sine', .22); tone(880, .05, .56, 'sine', .12); break; /* 咕咚咕咚+哈~ */
+      case 'snack': tone(988, .08, 0, 'triangle', .15); tone(1319, .09, .09, 'triangle', .15); tone(1760, .18, .2, 'sine', .1); tone(659, .1, .2, 'triangle', .1); break; /* 甜脆叮咚 */
+      case 'tickle': for (var i = 0; i < 7; i++) tone(i % 2 ? 940 : 700, .04, i * .05, 'triangle', .12); break; /* 痒痒颤音 */
+      case 'roll': sweep(760, 180, .55, 0, 'triangle', .16); tone(85, .16, .58, 'sine', .24); break; /* 滚落+落地砰 */
+      case 'sleep': [523, 392, 330, 262].forEach(function (f, i) { tone(f, .3, i * .3, 'sine', .1); }); break; /* 摇篮曲下行 */
+      case 'wake': [330, 415, 523, 659].forEach(function (f, i) { tone(f, .12, i * .1, 'triangle', .13); }); break; /* 起床号上行 */
+      case 'bear': bearVoice(); break; /* 唔噗噗！ */
+      case 'pop': tone(1046, .05, 0, 'sine', .12); tone(784, .07, .04, 'sine', .1); break; /* 弹窗弹出 */
+      case 'good': tone(784, .1, 0, 'triangle', .13); tone(1046, .14, .1, 'triangle', .13); break; /* 答对了 */
+      case 'wrong': tone(233, .18, 0, 'square', .06); tone(196, .25, .16, 'square', .06); break; /* 答错了 */
     }
+  }
+  function sweep(f1, f2, dur, delay, type, vol) {
+    var ac = audioCtx(); if (!ac) return;
+    var t0 = ac.currentTime + (delay || 0);
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f1, t0);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || .15, t0 + .02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + dur + .05);
+  }
+  function noise(dur, delay, vol, freq) {
+    var ac = audioCtx(); if (!ac) return;
+    var n = Math.floor(ac.sampleRate * dur);
+    var buf = ac.createBuffer(1, n, ac.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.4);
+    var src = ac.createBufferSource(); src.buffer = buf;
+    var f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq || 900; f.Q.value = .8;
+    var g = ac.createGain(); g.gain.value = vol || .2;
+    src.connect(f); f.connect(g); g.connect(ac.destination);
+    src.start(ac.currentTime + (delay || 0));
+  }
+  /* 黑白熊招牌"唔噗噗"——两声闷憨的熊叫 */
+  function bearVoice() {
+    sweep(340, 230, .1, 0, 'square', .12);      /* 唔 */
+    sweep(300, 200, .12, .13, 'square', .12);   /* 噗 */
+    noise(.06, .12, .05, 400);                  /* 鼻息 */
+    sweep(260, 190, .09, .27, 'square', .09);   /* 噗~ */
   }
 
   /* ================= 英语点读（系统 TTS 小喇叭） ================= */
@@ -528,15 +572,15 @@
     // 词语/单词
     if (l.words) {
       var isEn = key === 'english';
-      h += '<div class="section-title">' + (isEn ? '单词短语<span class="sub">点单词🔊听发音</span>' : '词语积累') + '</div><div class="card"><div class="word-chips">';
+      h += '<div class="section-title">' + (isEn ? '单词短语<span class="sub">点单词🔊听读+看卡片</span>' : '词语积累') + '</div><div class="card"><div class="word-chips">';
       if (l.words.list) l.words.list.forEach(function (w) { h += isEn
         ? '<span class="chip eng speak" data-say="' + esc(w) + '" style="cursor:pointer">🔊 ' + esc(w) + '</span>'
         : '<span class="chip">' + esc(w) + '</span>'; });
       if (l.words.phrases) l.words.phrases.forEach(function (w) { h += '<span class="chip eng speak" data-say="' + esc(w) + '" style="border-color:var(--gold-dim);cursor:pointer">🔊 ' + esc(w) + '</span>'; });
-      if (l.words.write) l.words.write.forEach(function (w) { h += '<span class="chip" style="border-color:' + s.color + '55">' + esc(w) + '</span>'; });
+      if (l.words.write) l.words.write.forEach(function (w) { h += '<span class="chip zi-chip" data-zi="' + esc(w) + '" style="border-color:' + s.color + '55;cursor:pointer">' + esc(w) + '</span>'; });
       h += '</div>';
       if (isEn) h += '<button class="btn ghost" style="width:100%;margin-top:10px" id="speak-all">🔊 顺序读一遍全部单词</button>';
-      if (l.words.write) h += '<div class="hint">带色框的是会写字，每个写两遍，明天听写。</div>';
+      if (l.words.write) h += '<div class="hint">带色框的是会写字，<b>点一下字看出卡片</b>（拼音·释义·组词·例句）；每个写两遍，明天听写。</div>';
       h += '</div>';
     }
 
@@ -556,6 +600,14 @@
           '<span class="toggle">查看答案 ▾</span><div class="a">' + esc(e2.a) + '</div></div>';
       });
     }
+
+    // 随机小闯关
+    if (key === 'chinese' && l.words && l.words.write && l.words.write.length)
+      h += '<button class="btn ghost" style="width:100%;margin-top:8px" id="rnd-zi">🎲 随机抽生字认一认</button>';
+    if (key === 'math')
+      h += '<button class="btn ghost" style="width:100%;margin-top:8px" id="rnd-math">🎯 随机练一题（答对 +2 奖章）</button>';
+    if (key === 'english' && l.words && l.words.list && l.words.list.length)
+      h += '<button class="btn ghost" style="width:100%;margin-top:8px" id="rnd-word">🎲 随机考单词</button>';
 
     // 完成按钮
     var allDone = l.preview && l.preview.every(function (t, i) { return st.tasks['p' + i]; });
@@ -693,6 +745,62 @@
       '<div class="bar ' + cls + '"><i style="width:' + Math.round(val) + '%"></i></div></div>';
   }
 
+  /* ---------- 生字/单词卡片弹窗 ---------- */
+  function ziCard(c) {
+    var e = window.KBG_DICT && window.KBG_DICT.han && window.KBG_DICT.han[c];
+    sfx('pop');
+    var body;
+    if (!e) body = '<div class="hint">这个字的卡片还没做好，先问爸爸妈妈吧。</div>';
+    else body =
+      '<div style="font-size:54px;font-weight:800;text-align:center;line-height:1.15;margin:4px 0">' + c + '</div>' +
+      '<div style="text-align:center;color:var(--dim);font-size:16px;margin-bottom:8px">' + esc(e.p) + '</div>' +
+      '<div class="card"><b>释义</b><div style="font-size:14px;margin-top:3px">' + esc(e.d) + '</div></div>' +
+      '<div class="card"><b>组词</b><div style="font-size:14px;margin-top:3px">' + e.z.map(esc).join(' · ') + '</div></div>' +
+      '<div class="card"><b>例句</b><div style="font-size:14px;margin-top:3px">' + esc(e.l) + '</div></div>';
+    modal('生字卡片', body, null, '知道了');
+  }
+  function enCard(w) {
+    var e = window.KBG_DICT && window.KBG_DICT.en && window.KBG_DICT.en[String(w).toLowerCase()];
+    sfx('pop');
+    var body;
+    if (!e) body = '<div class="hint">这个词的卡片还没做好。</div>';
+    else body =
+      '<div style="font-size:32px;font-weight:800;text-align:center;line-height:1.2;margin:4px 0">' + esc(w) + '</div>' +
+      '<div style="text-align:center;color:var(--dim);font-size:15px;margin-bottom:6px">' + esc(e.ip) + '　' + esc(e.cn) + '</div>' +
+      '<div class="card"><b>常用词组</b><div style="font-size:14px;margin-top:3px">' + esc(e.ph) + '</div></div>' +
+      '<div class="card"><b>例句</b><div style="font-size:14px;margin-top:3px">' + esc(e.ex) + '</div></div>' +
+      '<button class="btn" style="width:100%;margin-top:8px" id="wd-say">🔊 再读一遍</button>';
+    var mask = modal('单词卡片', body, null, '关闭');
+    speakEn(w);
+    var b = $('#wd-say', mask);
+    if (b) b.onclick = function () { speakEn(w); };
+  }
+
+  /* ---------- 数学随机出题器 ---------- */
+  function rnd(n, m) { return n + Math.floor(Math.random() * (m - n + 1)); }
+  function mathGen(lid) {
+    var t = rnd(2, 9), b1, b2, h, v, u;
+    if (lid.indexOf('sx1') === 0) { v = rnd(2, 30); var down = Math.random() < .5; return { q: (down ? '零下' : '零上') + v + '℃ 记作（　）℃（零下要加负号）', a: down ? -v : v }; }
+    if (lid.indexOf('sx2-1') === 0) { b1 = rnd(2, 20); h = rnd(2, 15); return { q: '平行四边形底 ' + b1 + ' 米、高 ' + h + ' 米，面积是多少平方米？', a: b1 * h }; }
+    if (lid.indexOf('sx2-2') === 0) { b1 = rnd(2, 20); h = rnd(2, 15); return { q: '三角形底 ' + b1 * 2 + ' 厘米、高 ' + h + ' 厘米，面积是多少平方厘米？', a: b1 * h }; }
+    if (lid.indexOf('sx2-3') === 0) { b1 = rnd(1, 9); b2 = rnd(10, 20); h = rnd(1, 9) * 2; return { q: '梯形上底 ' + b1 + ' 米、下底 ' + b2 + ' 米、高 ' + h + ' 米，面积是多少平方米？', a: (b1 + b2) * h / 2 }; }
+    if (lid.indexOf('sx2-4') === 0) { u = [['公顷', '平方米', 10000], ['平方千米', '公顷', 100], ['平方千米', '平方米', 1000000]][rnd(0, 2)]; v = rnd(2, 50); return { q: v + ' ' + u[0] + ' = （　）' + u[1], a: v * u[2] }; }
+    if (lid.indexOf('sx2') === 0) { b1 = rnd(2, 15); h = rnd(2, 12); return { q: '在长 ' + b1 + ' 米、宽 ' + h + ' 米的长方形里剪一个最大的平行四边形，面积是多少平方米？', a: b1 * h }; }
+    if (lid.indexOf('sx3') === 0) { v = rnd(1050, 99950); return { q: '把 ' + v + ' 改写成用"万"作单位的数是（　）。（如 3.45 表示 3.45 万）', a: v / 10000 }; }
+    if (lid.indexOf('sx4') === 0) { b1 = rnd(11, 99) / 10; b2 = rnd(11, 99) / 10; return Math.random() < .5 ? { q: b1.toFixed(1) + ' + ' + b2.toFixed(1) + ' = （　）', a: b1 + b2 } : { q: (b1 + b2).toFixed(1) + ' − ' + b1.toFixed(1) + ' = （　）', a: b2 }; }
+    if (lid.indexOf('sx5-1') === 0) { v = rnd(11, 99) / 100; var m = [10, 100, 1000][rnd(0, 2)]; return { q: v.toFixed(2) + ' × ' + m + ' = （　）', a: v * m }; }
+    if (lid.indexOf('sx5-2') === 0 || lid.indexOf('sx5-4') === 0) { v = rnd(11, 9999) / 100; var m2 = [10, 100, 1000][rnd(0, 2)]; return Math.random() < .5 ? { q: v.toFixed(2) + ' × ' + m2 + ' = （　）', a: v * m2 } : { q: (v * m2).toFixed(2) + ' ÷ ' + m2 + ' = （　）', a: v }; }
+    if (lid.indexOf('sx5-3') === 0) { b1 = rnd(2, 99); t = rnd(2, 9); return { q: b1 + ' ÷ ' + t + ' = （　）（除不尽时商是循环小数，写保留两位的结果）', a: Math.round(b1 / t * 100) / 100 }; }
+    if (lid.indexOf('sx5-5') === 0) { b1 = rnd(11, 99) / 10; b2 = rnd(11, 99) / 10; return { q: b1.toFixed(1) + ' × ' + b2.toFixed(1) + ' = （　）', a: b1 * b2 }; }
+    if (lid.indexOf('sx5-6') === 0) { v = rnd(11, 99) / 10; t = rnd(2, 9); return { q: v.toFixed(1) + ' ÷ ' + t + ' = （　）', a: Math.round(v / t * 100) / 100 }; }
+    if (lid.indexOf('sx5') === 0) { b1 = rnd(11, 99) / 10; t = rnd(2, 9); return { q: v0(b1) + ' × ' + t + ' = （　）', a: b1 * t }; }
+    if (lid.indexOf('sx7') === 0) { var d1 = rnd(1, 9), d2 = rnd(1, 9); if (d2 === d1) d2 = (d1 + 1) % 10; var d3 = (d1 + 3) % 10; if (d3 === d1 || d3 === d2) d3 = (d1 + 5) % 10; return { q: '用 ' + d1 + '、' + d2 + '、' + d3 + ' 三个数字组成没有重复数字的两位数，一共能组成（　）个', a: 6 }; }
+    if (lid.indexOf('sx8') === 0) { b1 = rnd(2, 12); return Math.random() < .5 ? { q: '正方形边长 a = ' + b1 + ' 米，周长 C =（　）米', a: 4 * b1 } : { q: '正方形边长 a = ' + b1 + ' 米，面积 S =（　）平方米', a: b1 * b1 }; }
+    b1 = rnd(2, 12); t = rnd(2, 12); var extra = rnd(1, 20);
+    return { q: b1 + ' × ' + t + ' + ' + extra + ' = （　）', a: b1 * t + extra };
+    function v0(x) { return x.toFixed(1); }
+  }
+
   /* ---------- 本地课本查看页 ---------- */
   function findLessonAny(lid) {
     for (var k in D.CURRICULUM) {
@@ -723,7 +831,7 @@
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
       '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v1.2 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v1.3 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -742,42 +850,42 @@
         if (!spend(5)) return;
         p.hunger = Math.min(100, p.hunger + 25); p.mood = Math.min(100, p.mood + 3);
         addXp(5); S.counters.feeds++; S._feedDay = dkey();
-        after('eat', quote('feed')); break;
+        sfx('feed'); after('eat', quote('feed')); break;
       case 'drink':
         if (!spend(3)) return;
         p.thirst = Math.min(100, p.thirst + 25);
         addXp(3); S.counters.feeds++; S._feedDay = dkey();
-        after('eat', quote('drink')); break;
+        sfx('drink'); after('eat', quote('drink')); break;
       case 'snack':
         if (!spend(10)) return;
         p.hunger = Math.min(100, p.hunger + 10); p.mood = Math.min(100, p.mood + 10);
         addXp(6);
-        after('happy', quote('snack')); break;
+        sfx('snack'); after('happy', quote('snack')); break;
       case 'tickle':
         if (!spend(5)) return;
         p.mood = Math.min(100, p.mood + 20);
         addXp(5);
-        after('giggle', quote('tickle')); break;
+        sfx('tickle'); after('giggle', quote('tickle')); break;
       case 'roll':
         if (!spend(5)) return;
         p.mood = Math.min(100, p.mood + 8);
         addXp(4);
-        after('back', quote('roll')); break;
+        sfx('roll'); after('back', quote('roll')); break;
       case 'sleep':
         if (p.sleeping) {
           p.sleeping = false;
-          after('idle', quote('wake'), 800);
+          sfx('wake'); after('idle', quote('wake'), 800);
         } else {
           if (!spend(8)) return;
           p.sleeping = true;
           addXp(4);
-          after('sleep', quote('sleep'), 60000);
+          sfx('sleep'); after('sleep', quote('sleep'), 60000);
         }
         break;
       case 'play':
         p.mood = Math.min(100, p.mood + 6);
         addXp(2);
-        after('happy', quote('tap'), 1800);
+        sfx('bear'); after('happy', quote('tap'), 1800);
         break;
       case 'skin':
         document.querySelector('.skin-grid').scrollIntoView({ behavior: 'smooth' });
@@ -815,7 +923,7 @@
     el.addEventListener('click', function (e) {
       var p = S.pet;
       p.mood = Math.min(100, p.mood + 2);
-      sfx('tap');
+      sfx('bear');
       addXp(1); save();
       roamerPlayer.play(petGrumpy() ? 'angry' : 'giggle');
       toast(petGrumpy() ? quote('angry') : quote('tap'));
@@ -903,12 +1011,68 @@
     $$('.book-btn', view).forEach(function (el) {
       el.addEventListener('click', function (e) { e.stopPropagation(); });
     });
-    // 英语点读小喇叭
+    // 英语点读：点单词=读+弹卡片
     $$('.speak', view).forEach(function (el) {
       el.addEventListener('click', function (e) {
         e.stopPropagation();
-        speakEn(el.getAttribute('data-say'));
+        enCard(el.getAttribute('data-say'));
       });
+    });
+    // 语文生字卡片
+    $$('.zi-chip', view).forEach(function (el) {
+      el.addEventListener('click', function () { ziCard(el.getAttribute('data-zi')); });
+    });
+    // 随机抽生字
+    var rz = $('#rnd-zi', view);
+    if (rz) rz.addEventListener('click', function () {
+      var f = findLessonAny(pageLid());
+      var ws = f && f.lesson.words && f.lesson.words.write;
+      if (!ws || !ws.length) return;
+      ziCard(ws[Math.floor(Math.random() * ws.length)]);
+    });
+    // 数学随机练一题
+    var rm = $('#rnd-math', view);
+    if (rm) rm.addEventListener('click', function () {
+      var g = mathGen(pageLid());
+      sfx('pop');
+      modal('🎯 随机练一题', '<div class="card" style="font-size:16px;margin-bottom:10px">' + esc(g.q) + '</div>' +
+        '<input id="quiz-in" inputmode="decimal" placeholder="在这里写答案" style="width:100%;padding:10px;font-size:18px;border-radius:10px;border:1px solid #555;background:#1c1e26;color:#fff">' +
+        '<div id="quiz-fb" style="color:var(--pink);font-size:13px;margin-top:6px;min-height:18px"></div>',
+        function (mk) {
+          var v = parseFloat($('#quiz-in', mk).value);
+          if (isNaN(v)) { $('#quiz-fb', mk).textContent = '先写个数字再交卷哦'; return false; }
+          if (Math.abs(v - g.a) < 0.005) { sfx('good'); earn(2, '答对随机题'); }
+          else {
+            sfx('wrong');
+            $('#quiz-fb', mk).textContent = g.tried ? ('答案：' + g.a) : '再想想～';
+            g.tried = true;
+            return false;
+          }
+        });
+      setTimeout(function () { var i2 = $('#quiz-in'); if (i2) i2.focus(); }, 80);
+    });
+    // 英语随机考单词
+    var rwd = $('#rnd-word', view);
+    if (rwd) rwd.addEventListener('click', function () {
+      var f = findLessonAny(pageLid());
+      var ws = f && f.lesson.words && f.lesson.words.list;
+      if (!ws || !ws.length) return;
+      var w = ws[Math.floor(Math.random() * ws.length)];
+      var e = window.KBG_DICT && window.KBG_DICT.en && window.KBG_DICT.en[w.toLowerCase()];
+      var mask = modal('🎲 考单词', '<div style="text-align:center;font-size:30px;font-weight:800;margin:6px 0">' + esc(w) + '</div>' +
+        '<button class="btn" style="width:100%;margin:6px 0" id="qz-say">🔊 读一读</button>' +
+        '<div id="qz-ans" style="text-align:center;font-size:15px;color:var(--dim);line-height:1.7">心里想好中文意思，再点"揭晓"</div>',
+        function (mk) {
+          var a = $('#qz-ans', mk);
+          if (!a.dataset.show) {
+            a.dataset.show = 1;
+            a.innerHTML = '<b style="color:#fff">' + esc(w) + '</b><br>' + (e ? esc(e.ip) + '　' + esc(e.cn) + '<br>' + esc(e.ph) + '<br>' + esc(e.ex) : '这个词的卡片还没做好');
+            return false;
+          }
+        }, '揭晓');
+      speakEn(w);
+      var qs = $('#qz-say', mask);
+      if (qs) qs.onclick = function () { speakEn(w); };
     });
     var sa = $('#speak-all', view);
     if (sa) sa.addEventListener('click', function () {
