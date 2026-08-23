@@ -483,3 +483,6 @@ body.theme-light .tabbar a.on { background: rgba(201,143,0,.13); box-shadow: ins
   .course-card .subj { font-size: 22px; }
   .tabbar a.on .ti { transform: scale(1.15); }
 }
+
+/* SVG 导航图标（不依赖系统emoji，平板上也是彩色） */
+.tabbar a .ti svg { width: 1em; height: 1em; display: block; margin: 0 auto; }

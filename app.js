@@ -1044,18 +1044,18 @@
 
   /* ================= 路由 ================= */
   var TABS = [
-    { hash: '#/home', icon: '🏠', name: '首页' },
-    { hash: '#/study', icon: '📚', name: '学习' },
-    { hash: '#/schedule', icon: '📅', name: '课表' },
-    { hash: '#/checkin', icon: '⭐', name: '打卡' },
-    { hash: '#/pet', icon: '🐻', name: '黑白熊' },
-    { hash: '#/settings', icon: '⚙️', name: '设置' }
+    { hash: '#/home', name: '首页', svg: '<svg viewBox="0 0 24 24"><path d="M3.5 11.2 12 4l8.5 7.2" fill="none" stroke="#FF8A4C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10.5V20h13v-9.5" fill="#FFB073" stroke="#FF8A4C" stroke-width="1.4" stroke-linejoin="round"/><rect x="10.2" y="14.5" width="3.6" height="5.5" rx="0.6" fill="#8A4A20"/></svg>' },
+    { hash: '#/study', name: '学习', svg: '<svg viewBox="0 0 24 24"><path d="M12 6.2C10 4.8 7 4.3 4 4.8v13.5c3-.5 6 0 8 1.4 2-1.4 5-1.9 8-1.4V4.8c-3-.5-6 0-8 1.4z" fill="#4CC9F0"/><path d="M12 6.2v13.5" stroke="#0E8FC4" stroke-width="1.3"/><path d="M6.3 8.4c1.6-.2 3.2 0 4.4.6M6.3 11.4c1.6-.2 3.2 0 4.4.6M13.3 9c1.2-.6 2.8-.8 4.4-.6M13.3 11.9c1.2-.6 2.8-.8 4.4-.6" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".85"/></svg>' },
+    { hash: '#/schedule', name: '课表', svg: '<svg viewBox="0 0 24 24"><rect x="3.2" y="4.6" width="17.6" height="16.2" rx="2.2" fill="#5AD1A0"/><rect x="3.2" y="4.6" width="17.6" height="4.2" rx="2.2" fill="#2FA97E"/><rect x="6.8" y="2.6" width="2.1" height="4.4" rx="1" fill="#1E7A5C"/><rect x="15.1" y="2.6" width="2.1" height="4.4" rx="1" fill="#1E7A5C"/><rect x="6.6" y="11" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="10.5" y="11" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="14.4" y="11" width="3" height="2.6" rx=".7" fill="#FF6B6B"/><rect x="6.6" y="15.2" width="3" height="2.6" rx=".7" fill="#fff"/><rect x="10.5" y="15.2" width="3" height="2.6" rx=".7" "#fff"/><rect x="14.4" y="15.2" width="3" height="2.6" rx=".7" fill="#fff"/></svg>' },
+    { hash: '#/checkin', name: '打卡', svg: '<svg viewBox="0 0 24 24"><path d="M12 2.8l2.7 5.9 6.4.7-4.8 4.4 1.3 6.3L12 16.8l-5.6 3.3 1.3-6.3L2.9 9.4l6.4-.7z" fill="#FFD24D" stroke="#E8A800" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
+    { hash: '#/pet', name: '黑白熊', svg: '<svg viewBox="0 0 24 24"><circle cx="7" cy="4.6" r="3.1" fill="#fff" stroke="#141414" stroke-width="1.4"/><circle cx="17" cy="4.6" r="3.1" fill="#141414" stroke="#141414" stroke-width="1.4"/><path d="M12 5.4c5 0 9 3.7 9 8.2 0 4.4-4 7.4-9 7.4s-9-3-9-7.4c0-4.5 4-8.2 9-8.2z" fill="#fff" stroke="#141414" stroke-width="1.4"/><path d="M12 5.4c5 0 9 3.7 9 8.2 0 4.4-4 7.4-9 7.4z" fill="#141414"/><circle cx="8.2" cy="12.2" r="1.7" fill="#141414"/><path d="M15.8 10.8l2.3 1.5-1 2.4-2.2-1.1z" fill="#FF3E6C"/><path d="M7.2 16.4c1.5 1.3 3.2 1.9 4.8 1.9" fill="none" stroke="#141414" stroke-width="1.3" stroke-linecap="round"/><path d="M16 16.6l2.4-.3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>' },
+    { hash: '#/settings', name: '设置', svg: '<svg viewBox="0 0 24 24"><g fill="#9AA8BD"><rect x="10.6" y="1.8" width="2.8" height="4.2" rx="1.2"/><rect x="10.6" y="18" width="2.8" height="4.2" rx="1.2"/><rect x="1.8" y="10.6" width="4.2" height="2.8" rx="1.2"/><rect x="18" y="10.6" width="4.2" height="2.8" rx="1.2"/><rect x="10.6" y="1.8" width="2.8" height="4.2" rx="1.2" transform="rotate(45 12 12)"/><rect x="10.6" y="18" width="2.8" height="4.2" rx="1.2" transform="rotate(45 12 12)"/><rect x="1.8" y="10.6" width="4.2" height="2.8" rx="1.2" transform="rotate(-45 12 12)"/><rect x="18" y="10.6" width="4.2" height="2.8" rx="1.2" transform="rotate(-45 12 12)"/></g><circle cx="12" cy="12" r="6.4" fill="#9AA8BD"/><circle cx="12" cy="12" r="3" fill="#5F6E84"/></svg>' }
   ];
   function renderTabbar(route) {
     var bar = $('#tabbar');
     bar.innerHTML = TABS.map(function (t) {
       var on = route.indexOf(t.hash) === 0 || (t.hash === '#/study' && (route.indexOf('#/lesson') === 0 || route.indexOf('#/subject') === 0 || route.indexOf('#/bookview') === 0));
-      return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti">' + t.icon + '</span>' + t.name + '</a>';
+      return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti">' + (t.svg || t.icon) + '</span>' + t.name + '</a>';
     }).join('');
   }
 
