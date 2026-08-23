@@ -1000,7 +1000,8 @@
     { hash: '#/study', icon: '📚', name: '学习' },
     { hash: '#/schedule', icon: '📅', name: '课表' },
     { hash: '#/checkin', icon: '⭐', name: '打卡' },
-    { hash: '#/pet', icon: '🐻', name: '黑白熊' }
+    { hash: '#/pet', icon: '🐻', name: '黑白熊' },
+    { hash: '#/settings', icon: '⚙️', name: '设置' }
   ];
   function renderTabbar(route) {
     var bar = $('#tabbar');
