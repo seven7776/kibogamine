@@ -480,7 +480,7 @@
     var h = '';
     h += '<div class="hero"><div class="hero-info">' +
       '<div class="hi">' + (dow <= 5 ? '今天周' + '一二三四五'[dow - 1] : '今天是周末') + ' · ' + S.pet.name + '在等你</div>' +
-      '<h2>你好，<span style="color:var(--gold)">五年级</span>的同学</h2>' +
+      '<h2>你好，<span style="color:var(--gold)">源远</span></h2>' +
       '<div class="streak">🔥 连续学习 ' + S.streak + ' 天</div>' +
       '</div><div class="ring-wrap"><svg width="84" height="84">' +
       '<circle cx="42" cy="42" r="' + r + '" stroke="#2A2E38" stroke-width="8" fill="none"/>' +

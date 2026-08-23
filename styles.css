@@ -447,3 +447,9 @@ input, select { font-family: inherit; }
 
 /* 浅色主题下的导航底色 */
 body.theme-light .tabbar { background: rgba(250,248,241,.94); }
+
+/* 浅色主题一致性补丁：hero/lesson-hero/card-dark 不再硬编码深色 */
+body.theme-light .hero { background: linear-gradient(135deg, #FFFDF6 0%, #F8F2E2 100%); border-color: var(--border); }
+body.theme-light .lesson-hero { background: linear-gradient(135deg, #FFFDF6, #F6F0DF); border-color: var(--border); }
+body.theme-light .card-dark { background: linear-gradient(135deg, #FBF8EE, #F3EDDD); border-color: var(--border); color: var(--text); }
+body.theme-light .hero::after { background: radial-gradient(circle, rgba(224,30,90,.10), transparent 70%); }
