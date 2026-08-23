@@ -716,6 +716,7 @@
   function renderSettings() {
     return '<div class="section-title">设置</div>' +
       '<div class="card">' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="update-btn">🔄 检查更新</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="sound-btn">' + (S.sound === false ? '🔇 音效：关（点我开启）' : '🔊 音效：开（点我关闭）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="export-btn">导出备份（JSON）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="import-btn">导入备份</button>' +
@@ -1141,6 +1142,19 @@
       petPlayer = null;
     }
     // 设置
+    var ub = $('#update-btn', view);
+    if (ub) ub.addEventListener('click', function () {
+      if (!('serviceWorker' in navigator)) { toast('这台设备不支持自动更新'); return; }
+      toast('正在检查更新…');
+      navigator.serviceWorker.getRegistration().then(function (reg) {
+        if (!reg) { toast('本地没有缓存，关掉重开就是最新版'); return; }
+        reg.update().then(function () {
+          setTimeout(function () {
+            if (!reg.installing && !reg.waiting) toast('已经是最新版啦');
+          }, 1500);
+        }).catch(function () { toast('检查失败，看看网络连没连'); });
+      });
+    });
     var sb = $('#sound-btn', view);
     if (sb) sb.addEventListener('click', function () {
       S.sound = (S.sound === false);
@@ -1203,7 +1217,27 @@
     }, 60000);
     window.addEventListener('hashchange', render);
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      navigator.serviceWorker.register('sw.js').catch(function () { });
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        // 自动更新：启动即主动检查（不依赖页面导航），有新版自动换血并刷新一次
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (refreshing) return; refreshing = true;
+          location.reload();
+        });
+        function watch() {
+          reg.addEventListener('updatefound', function () {
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage('SKIP_WAITING');
+            });
+          });
+        }
+        watch();
+        // 每小时再查一次（App 挂后台一天也能追上）
+        setInterval(function () { reg.update().catch(function () { }); }, 3600000);
+        reg.update().catch(function () { });
+      }).catch(function () { });
     }
   }
 

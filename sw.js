@@ -1,5 +1,5 @@
 /* 希望峰学园 Service Worker — 缓存优先, 版本更新换 CACHE 名 */
-var CACHE = 'kibogamine-v10';
+var CACHE = 'kibogamine-v11';
 var ASSETS = [
   './', './index.html', './styles.css', './three.min.js', './pet3d.js', './data.js', './app.js',
   './manifest.json', './icon-192.png', './icon-512.png'
@@ -16,6 +16,7 @@ self.addEventListener('activate', function (e) {
   );
   self.clients.claim();
 });
+self.addEventListener('message', function (e) { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
 self.addEventListener('fetch', function (e) {
   e.respondWith(
     caches.match(e.request).then(function (hit) { return hit || fetch(e.request); })
