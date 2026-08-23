@@ -606,3 +606,54 @@ body.theme-light .scene-playing .bh-wall { background: linear-gradient(180deg, #
   .sno u { font-size: 12px; }
   .bear-house { min-height: 340px; }
 }
+
+/* ================= 小屋 v2：尺寸修复 + 逼真化 ================= */
+.bear-house { min-height: 400px; }
+#pet-canvas { width: 230px; height: 230px; }
+/* 吊灯 */
+.bh-lamp { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 2px; height: 26px; background: #3A3A3A; z-index: 2; }
+.bh-lamp::after { content: ''; position: absolute; top: 26px; left: 50%; transform: translateX(-50%); width: 56px; height: 30px; background: linear-gradient(180deg, #FFEEB0, #E8B004); border-radius: 8px 8px 16px 16px; clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%); box-shadow: 0 8px 40px 14px rgba(255,220,120,.18); }
+/* 踢脚线 + 墙角阴影 */
+.bh-wall::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; background: #4A3A26; box-shadow: 0 -6px 14px rgba(0,0,0,.25); }
+.bh-floor { box-shadow: inset 0 8px 16px -6px rgba(0,0,0,.45); }
+/* 窗帘 */
+.bh-curtain { position: absolute; top: 14px; right: 18px; width: 108px; height: 92px; z-index: 2; pointer-events: none; }
+.bh-curtain::before, .bh-curtain::after { content: ''; position: absolute; top: 0; width: 22px; height: 92px; background: repeating-linear-gradient(90deg, #B8446A 0 7px, #93355A 7px 14px); border-radius: 0 0 10px 10px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.bh-curtain::before { left: 0; transform: skewY(-2deg); }
+.bh-curtain::after { right: 0; transform: skewY(2deg); }
+/* 书架 */
+.bh-shelf { position: absolute; top: 26px; left: 108px; width: 92px; height: 64px; z-index: 2; background: #5C4328; border: 3px solid #47331D; border-radius: 4px; display: flex; align-items: flex-end; gap: 3px; padding: 4px 5px; }
+.bh-shelf i { display: block; width: 9px; border-radius: 2px 2px 0 0; }
+.bh-shelf i:nth-child(1) { height: 26px; background: #E01E5A; }
+.bh-shelf i:nth-child(2) { height: 32px; background: #4CC9F0; }
+.bh-shelf i:nth-child(3) { height: 22px; background: #5AD1A0; transform: rotate(-8deg); }
+.bh-shelf i:nth-child(4) { height: 30px; background: #FFD24D; }
+.bh-shelf i:nth-child(5) { height: 25px; background: #B892FF; }
+.bh-shelf i:nth-child(6) { height: 34px; background: #FF8A4C; transform: rotate(6deg); }
+/* 道具精修：高光/阴影 */
+.bh-bowl { box-shadow: 0 4px 8px rgba(0,0,0,.35); }
+.bh-bowl::before { content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 3px; height: 8px; background: rgba(255,255,255,.5); border-radius: 2px; box-shadow: 4px -4px 0 rgba(255,255,255,.35), -4px -7px 0 rgba(255,255,255,.3); animation: steam 2s infinite; }
+@keyframes steam { 0% { opacity: .9; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -8px); } }
+.bh-ball { background: radial-gradient(circle at 32% 30%, #FFF 0 18%, transparent 19%), linear-gradient(90deg, #FF6B6B 50%, #FDFDFD 50%); }
+.bh-bed { box-shadow: 0 6px 12px rgba(0,0,0,.35); }
+.bh-bed::before { content: ''; position: absolute; top: -14px; left: -4px; width: 46px; height: 22px; background: #6E4529; border-radius: 8px 8px 0 0; }
+.bh-bed .blanket { background: repeating-linear-gradient(90deg, #5AD1A0 0 10px, #4BBd8B 10px 20px); box-shadow: inset 0 3px 6px rgba(255,255,255,.25); }
+.bh-book { background: linear-gradient(180deg, #7DD8F7, #3FB6E8); box-shadow: 0 4px 8px rgba(0,0,0,.3); }
+.bh-book::before { content: ''; position: absolute; inset: 3px 5px; background: rgba(255,255,255,.85); border-radius: 2px; box-shadow: 0 2px 0 rgba(0,0,0,.1); }
+.bh-cup { background: linear-gradient(180deg, #7DD8F7 0 6px, rgba(191,227,245,.65) 6px); box-shadow: 0 4px 8px rgba(0,0,0,.3), inset -3px 0 6px rgba(255,255,255,.4); }
+/* 场景氛围光 */
+.scene-eating::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 40%, rgba(255,190,90,.20), transparent 55%); z-index: 1; pointer-events: none; }
+.scene-studying::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 18%, rgba(255,240,180,.22), transparent 60%); z-index: 1; pointer-events: none; }
+.scene-sleeping::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 82% 18%, rgba(180,190,255,.15), transparent 50%), linear-gradient(180deg, rgba(10,14,26,.55), rgba(10,14,26,.25)); z-index: 1; pointer-events: none; }
+/* 桌子（吃饭/学习场景用） */
+.bh-table { display: none; position: absolute; bottom: 58px; right: calc(50% + 62px); width: 96px; height: 10px; background: linear-gradient(180deg, #A9784C, #8E6238); border-radius: 3px; z-index: 2; box-shadow: 0 3px 6px rgba(0,0,0,.3); }
+.bh-table::before, .bh-table::after { content: ''; position: absolute; top: 10px; width: 7px; height: 40px; background: #7A5330; border-radius: 0 0 3px 3px; }
+.bh-table::before { left: 8px; } .bh-table::after { right: 8px; }
+.scene-eating .bh-table, .scene-studying .bh-table { display: block; }
+.scene-eating .bh-bowl { bottom: 68px; }
+.scene-studying .bh-book { bottom: 68px; }
+/* 平板 */
+@media (min-width: 600px) {
+  .bear-house { min-height: 440px; }
+  #pet-canvas { width: 260px; height: 260px; }
+}
