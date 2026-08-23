@@ -18,6 +18,23 @@
   --tabbar-h: 64px;
 }
 
+/* 浅色主题 · 纸张白（默认） */
+body.theme-light {
+  --bg: #F5F2E9;
+  --surface: #FFFFFF;
+  --surface2: #F3EFE4;
+  --surface3: #EAE5D6;
+  --border: #DCD6C4;
+  --gold: #C98F00;
+  --gold-dim: #9A7B1C;
+  --pink: #E01E5A;
+  --blue: #0E8FC4;
+  --green: #4E7D3A;
+  --red: #D94040;
+  --purple: #7A5BD6;
+  --text: #191A17;
+  --dim: #6E6F68;
+}
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
 body {
