@@ -514,25 +514,23 @@
       '<circle cx="42" cy="42" r="' + r + '" stroke="#FFD24D" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + off + '"/>' +
       '</svg><div class="ring-num"><b>' + pct + '%</b><i>今日进度</i></div></div></div>';
 
-    // 今日课程
-    h += '<div class="section-title">今日课程<span class="sub">点卡片去学</span></div>';
+    // 今日课程：固定语数英三科（结合今天有没有这节课）
+    h += '<div class="section-title">主科直达<span class="sub">点卡片去学</span></div><div class="course-grid">';
+    [['chinese', '语文'], ['math', '数学'], ['english', '英语']].forEach(function (pair) {
+      var sk = pair[0];
+      var sub = D.CURRICULUM[sk];
+      var hasToday = courses.some(function (c) { return subjOfCourse(c) === sk; });
+      h += '<div class="course-card" data-go="#/study">' +
+        '<div class="subj"><span class="dot" style="background:' + sub.color + '"></span>' + sub.name + '</div>' +
+        '<div class="name">' + (hasToday ? '今天有课 · 跟课走' : '今天无课 · 预习复习') + '</div>' +
+        '<button class="go">去学习</button></div>';
+    });
     if (courses.length) {
-      h += '<div class="course-grid">';
-      var seen = {};
-      courses.forEach(function (name) {
-        var sk = subjOfCourse(name);
-        if (!sk) return;            // 首页只展示语数英主科
-        if (seen[name]) return; seen[name] = 1;
-        var color = sk ? D.CURRICULUM[sk].color : 'var(--dim)';
-        h += '<div class="course-card" data-go="' + (sk ? '#/study' : '#/schedule') + '">' +
-          '<div class="subj"><span class="dot" style="background:' + color + '"></span>' + esc(name) + '</div>' +
-          '<div class="name">' + (sk ? '去跟课学习' : '副科/活动') + '</div>' +
-          '<button class="go">' + (sk ? '去学习' : '看课表') + '</button></div>';
-      });
-      h += '</div>';
-    } else {
-      h += '<div class="card"><div class="empty-tip">今天没有学校课程，去打卡或陪' + esc(S.pet.name) + '玩吧</div></div>';
+      var others = [];
+      courses.forEach(function (name) { if (!subjOfCourse(name) && others.indexOf(name) < 0) others.push(name); });
+      if (others.length) h += '</div><div class="hint" style="margin-top:8px">今天副科：' + esc(others.join('、')) + '（点课表看详情）</div><div style="display:none">';
     }
+    h += '</div>';
 
     // 今日任务（8宫格方块，两行四列）
     h += '<div class="section-title">今日任务<span class="sub">' + done + '/' + tasks.length + '</span></div><div class="task-grid">';
@@ -1108,13 +1106,13 @@
   }
 
   /* ================= 路由 ================= */
-      var TABS = [
-    { hash: '#/home', name: '首页', svg: '<svg viewBox="0 0 48 48"><defs><linearGradient id="gh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB073"/><stop offset="1" stop-color="#FF8A4C"/></linearGradient></defs><path d="M8 24 24 9l16 15" fill="none" stroke="#D95F2B" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 22.5V39a1.5 1.5 0 0 0 1.5 1.5h7V30h8v10.5h7a1.5 1.5 0 0 0 1.5-1.5V22.5" fill="url(#gh)" stroke="#D95F2B" stroke-width="2.5" stroke-linejoin="round"/><rect x="20.5" y="30" width="7" height="9.5" rx="1" fill="#7A3A16"/><circle cx="38.5" cy="10.5" r="2.2" fill="#D95F2B"/><path d="M36.8 8.4 35.2 4.6M40.2 8.4 41.8 4.6M34.6 10.5 30.6 9M42.4 10.5 46.4 9" stroke="#FF8A4C" stroke-width="1.6" stroke-linecap="round"/></svg>' },
-    { hash: '#/study', name: '学习', svg: '<svg viewBox="0 0 48 48"><defs><linearGradient id="gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DD8F7"/><stop offset="1" stop-color="#3FB6E8"/></linearGradient></defs><path d="M24 12.5C20.8 10.2 16.2 9.4 12 10v24.5c4.2-.6 8.8.2 12 2.5 3.2-2.3 7.8-3.1 12-2.5V10c-4.2-.6-8.8.2-12 2.5z" fill="url(#gb)" stroke="#1C8FBF" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 12.5v24.5" stroke="#1C8FBF" stroke-width="2.2"/><path d="M16 16.5c2.2-.3 4.4 0 6 .8M16 21.5c2.2-.3 4.4 0 6 .8M26 17.3c1.6-.8 3.8-1.1 6-.8M26 22.3c1.6-.8 3.8-1.1 6-.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".9"/><path d="M36 6l3.2 3.2L31 17.4l-4 1 1-4z" fill="#FFD24D" stroke="#C98F00" stroke-width="1.6" stroke-linejoin="round"/></svg>' },
-    { hash: '#/schedule', name: '课表', svg: '<svg viewBox="0 0 48 48"><defs><linearGradient id="gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7FE3BC"/><stop offset="1" stop-color="#3FC48D"/></linearGradient></defs><rect x="7" y="9" width="34" height="32" rx="4" fill="url(#gc)" stroke="#1F9C6B" stroke-width="2.5"/><rect x="7" y="9" width="34" height="8" rx="4" fill="#2FA97E"/><rect x="14" y="5" width="4" height="8" rx="2" fill="#1F7A55"/><rect x="30" y="5" width="4" height="8" rx="2" fill="#1F7A55"/><rect x="12.5" y="21" width="6" height="5" rx="1.2" fill="#fff" opacity=".95"/><rect x="21" y="21" width="6" height="5" rx="1.2" fill="#fff" opacity=".95"/><rect x="29.5" y="21" width="6" height="5" rx="1.2" fill="#FF8A80"/><rect x="12.5" y="30" width="6" height="5" rx="1.2" fill="#fff" opacity=".95"/><rect x="21" y="30" width="6" height="5" rx="1.2" fill="#fff" opacity=".95"/><path d="M29.5 31.5l2.6 2.6 4.4-4.9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
-    { hash: '#/checkin', name: '打卡', svg: '<svg viewBox="0 0 48 48"><defs><linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE28A"/><stop offset="1" stop-color="#FFC53D"/></linearGradient></defs><path d="M24 5.5l5.4 11.4 12.5 1.6-9.2 8.6 2.4 12.3L24 33.2 12.9 39.4l2.4-12.3-9.2-8.6 12.5-1.6z" fill="url(#gs)" stroke="#D99A00" stroke-width="2.2" stroke-linejoin="round"/><circle cx="20.5" cy="21.5" r="1.6" fill="#8A5E00"/><circle cx="27.5" cy="21.5" r="1.6" fill="#8A5E00"/><path d="M20 27c1.2 1.4 2.6 2 4 2s2.8-.6 4-2" fill="none" stroke="#8A5E00" stroke-width="1.8" stroke-linecap="round"/></svg>' },
-    { hash: '#/pet', name: '黑白熊', svg: '<svg viewBox="0 0 48 48"><circle cx="13.5" cy="9" r="6" fill="#FDFDFD" stroke="#191919" stroke-width="2.6"/><circle cx="34.5" cy="9" r="6" fill="#191919" stroke="#191919" stroke-width="2.6"/><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E8E6E0"/></linearGradient></defs><path d="M24 10.5c10 0 17.5 7.2 17.5 16.2 0 8.6-7.8 14.3-17.5 14.3S6.5 35.3 6.5 26.7C6.5 17.7 14 10.5 24 10.5z" fill="url(#gf)" stroke="#191919" stroke-width="2.6"/><path d="M24 10.5c10 0 17.5 7.2 17.5 16.2 0 8.6-7.8 14.3-17.5 14.3z" fill="#232323"/><ellipse cx="16" cy="24" rx="3.2" ry="3.8" fill="#191919"/><path d="M32.5 21.5l4.6 3-2 4.8-4.4-2.2z" fill="#FF3E6C" stroke="#C41E48" stroke-width="1.2" stroke-linejoin="round"/><path d="M14 32.5c3 2.6 6.4 3.8 10 3.8" fill="none" stroke="#191919" stroke-width="2.4" stroke-linecap="round"/><path d="M32 32.8l4.8-.6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M6.5 26.7C6.5 17.7 14 10.5 24 10.5" fill="none" stroke="#191919" stroke-width="2.6"/></svg>' },
-    { hash: '#/settings', name: '设置', svg: '<svg viewBox="0 0 48 48"><defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B9C5D8"/><stop offset="1" stop-color="#8395B0"/></linearGradient></defs><path d="M24 6l2.2 4.6a13.6 13.6 0 0 1 4.5 1.9l5-1.2 3.5 3.5-1.2 5c1 1.4 1.6 2.9 1.9 4.5L44.5 27v5l-4.6 2.2a13.6 13.6 0 0 1-1.9 4.5l1.2 5-3.5 3.5-5-1.2a13.6 13.6 0 0 1-4.5 1.9L24 44.5h0" fill="none"/><path d="M20.6 6.4l.9 4.3a14 14 0 0 0-3.7 2.1l-4-1.7-3.9 3.9 1.7 4a14 14 0 0 0-2.1 3.7l-4.3.9v5.5l4.3.9a14 14 0 0 0 2.1 3.7l-1.7 4 3.9 3.9 4-1.7a14 14 0 0 0 3.7 2.1l.9 4.3h5.5l.9-4.3a14 14 0 0 0 3.7-2.1l4 1.7 3.9-3.9-1.7-4a14 14 0 0 0 2.1-3.7l4.3-.9v-5.5l-4.3-.9a14 14 0 0 0-2.1-3.7l1.7-4-3.9-3.9-4 1.7a14 14 0 0 0-3.7-2.1l-.9-4.3z" fill="url(#gg)" stroke="#5C6C85" stroke-width="2.4" stroke-linejoin="round"/><circle cx="23.4" cy="24.6" r="6.5" fill="#48586F"/><circle cx="23.4" cy="24.6" r="3.4" fill="#C7D2E2"/></svg>' }
+        var TABS = [
+    { hash: '#/home', name: '首页', svg: '<svg viewBox="0 0 48 48"><path d="M7.5 24 24 8.5 40.5 24" fill="none" stroke="#E8763D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 22.5V39.5h9V29.5h7v10h9V22.5" fill="#FFA768" stroke="#E8763D" stroke-width="2.5" stroke-linejoin="round"/><rect x="20.8" y="29.5" width="6.4" height="10" rx="1" fill="#8A4A20"/><rect x="36" y="8" width="5" height="5" rx="1" fill="#E8763D"/></svg>' },
+    { hash: '#/study', name: '学习', svg: '<svg viewBox="0 0 48 48"><path d="M24 12.5C20.8 10.2 16.2 9.4 12 10v24.5c4.2-.6 8.8.2 12 2.5 3.2-2.3 7.8-3.1 12-2.5V10c-4.2-.6-8.8.2-12 2.5z" fill="#6BD0F5" stroke="#1C8FBF" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 12.5v24.5" stroke="#1C8FBF" stroke-width="2.2"/><path d="M15.8 16.8c2.2-.3 4.4 0 6 .8M15.8 21.8c2.2-.3 4.4 0 6 .8M26.2 17.6c1.6-.8 3.8-1.1 6-.8M26.2 22.6c1.6-.8 3.8-1.1 6-.8" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><path d="M35.5 6.5l3.4 3.4-8.4 8.4-4.2 1 1-4.2z" fill="#FFD24D" stroke="#C98F00" stroke-width="1.6" stroke-linejoin="round"/></svg>' },
+    { hash: '#/schedule', name: '课表', svg: '<svg viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="32" rx="4" fill="#5AD1A0" stroke="#1F9C6B" stroke-width="2.5"/><rect x="7" y="9" width="34" height="8" rx="4" fill="#3FB586"/><rect x="14" y="5" width="4" height="8" rx="2" fill="#1F7A55"/><rect x="30" y="5" width="4" height="8" rx="2" fill="#1F7A55"/><rect x="12.5" y="21" width="6" height="5" rx="1.2" fill="#FFFFFF"/><rect x="21" y="21" width="6" height="5" rx="1.2" fill="#FFFFFF"/><rect x="29.5" y="21" width="6" height="5" rx="1.2" fill="#FF8A80"/><rect x="12.5" y="30" width="6" height="5" rx="1.2" fill="#FFFFFF"/><rect x="21" y="30" width="6" height="5" rx="1.2" fill="#FFFFFF"/><path d="M29.5 31.5l2.6 2.6 4.4-4.9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+    { hash: '#/checkin', name: '打卡', svg: '<svg viewBox="0 0 48 48"><path d="M24 5.5l5.4 11.4 12.5 1.6-9.2 8.6 2.4 12.3L24 33.2 12.9 39.4l2.4-12.3-9.2-8.6 12.5-1.6z" fill="#FFD24D" stroke="#D99A00" stroke-width="2.2" stroke-linejoin="round"/><circle cx="20.5" cy="21.5" r="1.7" fill="#8A5E00"/><circle cx="27.5" cy="21.5" r="1.7" fill="#8A5E00"/><path d="M20 27c1.2 1.4 2.6 2 4 2s2.8-.6 4-2" fill="none" stroke="#8A5E00" stroke-width="1.8" stroke-linecap="round"/></svg>' },
+    { hash: '#/pet', name: '黑白熊', svg: '<svg viewBox="0 0 48 48"><circle cx="13.5" cy="9" r="6" fill="#FDFDFD" stroke="#191919" stroke-width="2.6"/><circle cx="34.5" cy="9" r="6" fill="#191919" stroke="#191919" stroke-width="2.6"/><path d="M24 10.5c10 0 17.5 7.2 17.5 16.2 0 8.6-7.8 14.3-17.5 14.3S6.5 35.3 6.5 26.7C6.5 17.7 14 10.5 24 10.5z" fill="#FDFDFD" stroke="#191919" stroke-width="2.6"/><path d="M24 10.5c10 0 17.5 7.2 17.5 16.2 0 8.6-7.8 14.3-17.5 14.3z" fill="#232323"/><ellipse cx="16" cy="24" rx="3.2" ry="3.8" fill="#191919"/><path d="M32.5 21.5l4.6 3-2 4.8-4.4-2.2z" fill="#FF3E6C" stroke="#C41E48" stroke-width="1.2" stroke-linejoin="round"/><path d="M14 32.5c3 2.6 6.4 3.8 10 3.8" fill="none" stroke="#191919" stroke-width="2.4" stroke-linecap="round"/><path d="M32 32.8l4.8-.6" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/></svg>' },
+    { hash: '#/settings', name: '设置', svg: '<svg viewBox="0 0 48 48"><path d="M20.6 6.4l.9 4.3a14 14 0 0 0-3.7 2.1l-4-1.7-3.9 3.9 1.7 4a14 14 0 0 0-2.1 3.7l-4.3.9v5.5l4.3.9a14 14 0 0 0 2.1 3.7l-1.7 4 3.9 3.9 4-1.7a14 14 0 0 0 3.7 2.1l.9 4.3h5.5l.9-4.3a14 14 0 0 0 3.7-2.1l4 1.7 3.9-3.9-1.7-4a14 14 0 0 0 2.1-3.7l4.3-.9v-5.5l-4.3-.9a14 14 0 0 0-2.1-3.7l1.7-4-3.9-3.9-4 1.7a14 14 0 0 0-3.7-2.1l-.9-4.3z" fill="#9AA8BD" stroke="#5C6C85" stroke-width="2.4" stroke-linejoin="round"/><circle cx="23.4" cy="24.6" r="6.5" fill="#48586F"/><circle cx="23.4" cy="24.6" r="3.4" fill="#C7D2E2"/></svg>' }
   ];
   function renderTabbar(route) {
     var bar = $('#tabbar');
