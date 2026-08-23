@@ -63,13 +63,13 @@
 
     /* 白肚皮 + X扣 */
     var belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 24), whiteM);
-    belly.scale.set(0.98, 1.06, 0.38);
-    belly.position.set(0, 0.66, 0.62);
+    belly.scale.set(1.18, 1.24, 0.44);           // 原型图: 肚皮占腹约1/3, 加大
+    belly.position.set(0, 0.64, 0.58);
     bodyG.add(belly);
-    var xb1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.24, 0.04), darkM);
+    var xb1 = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.34, 0.05), darkM);  // X扣加粗
     var xb2 = xb1.clone();
-    xb1.rotation.z = 0.65; xb2.rotation.z = -0.65;
-    xb1.position.set(0, 0.66, 0.86); xb2.position.set(0, 0.66, 0.86);
+    xb1.rotation.z = 0.62; xb2.rotation.z = -0.62;
+    xb1.position.set(0, 0.64, 0.83); xb2.position.set(0, 0.64, 0.83);
     bodyG.add(xb1); bodyG.add(xb2);
 
     /* 头 */
