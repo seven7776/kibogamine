@@ -121,8 +121,9 @@ input, select { font-family: inherit; }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 12px; position: relative;
 }
-.course-card .subj { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-.course-card .name { font-size: 14px; margin: 4px 0 10px; color: var(--text); }
+.course-card .subj { font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.course-card .subj .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.course-card .name { font-size: 13px; margin: 4px 0 10px; color: var(--dim); }
 .course-card .go {
   background: var(--surface3); border: 1px solid var(--border); color: var(--gold);
   font-size: 12px; padding: 4px 12px; border-radius: 999px;
@@ -338,7 +339,7 @@ input, select { font-family: inherit; }
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; text-decoration: none; color: var(--dim); font-size: 10px;
 }
-.tabbar a .ti { font-size: 20px; line-height: 1; filter: grayscale(1); opacity: .7; }
+.tabbar a .ti { font-size: 20px; line-height: 1; filter: none; opacity: .62; transition: opacity .15s, transform .15s; }
 .tabbar a.on { color: var(--gold); }
 .tabbar a.on .ti { filter: none; opacity: 1; }
 
@@ -470,3 +471,15 @@ body.theme-light .hero { background: linear-gradient(135deg, #FFFDF6 0%, #F8F2E2
 body.theme-light .lesson-hero { background: linear-gradient(135deg, #FFFDF6, #F6F0DF); border-color: var(--border); }
 body.theme-light .card-dark { background: linear-gradient(135deg, #FBF8EE, #F3EDDD); border-color: var(--border); color: var(--text); }
 body.theme-light .hero::after { background: radial-gradient(circle, rgba(224,30,90,.10), transparent 70%); }
+
+/* 侧栏/底栏选中高亮（深浅两色通用） */
+.tabbar a.on { background: rgba(255,210,77,.16); border-radius: 14px; box-shadow: inset 0 0 0 1px rgba(255,210,77,.35); }
+body.theme-light .tabbar a.on { background: rgba(201,143,0,.13); box-shadow: inset 0 0 0 1px rgba(154,123,28,.30); }
+@media (max-width: 599px) {
+  .tabbar { padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 4px; }
+  .tabbar a { margin: 0 2px; border-radius: 12px; }
+}
+@media (min-width: 600px) {
+  .course-card .subj { font-size: 22px; }
+  .tabbar a.on .ti { transform: scale(1.15); }
+}
