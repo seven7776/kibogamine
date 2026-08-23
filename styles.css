@@ -371,45 +371,57 @@ input, select { font-family: inherit; }
 .hint { font-size: 11px; color: var(--dim); margin-top: 10px; line-height: 1.5; }
 
 /* ---------- 横屏/平板: 左侧导航 ---------- */
-@media (min-width: 760px) {
-  #app { max-width: 900px; padding-left: 130px; }
+/* ---------- 平板布局（≥600px，含平板竖屏）：铺满+侧栏+大字 ---------- */
+@media (min-width: 600px) {
+  body { font-size: 17px; }
+  #app { max-width: none; width: auto; padding: 18px 26px 40px 134px; }
+  .topbar { padding: 8px 2px; }
+  .topbar h1 { font-size: 24px; }
   .tabbar {
-    left: 0; right: auto; top: 0; bottom: 0; width: 112px; height: auto;
+    left: 0; right: auto; top: 0; bottom: 0; width: 116px; height: auto;
     flex-direction: column; border-top: none; border-right: 1px solid var(--border);
     padding-top: 16px; justify-content: flex-start; gap: 10px;
   }
-  .tabbar a { flex: none; width: 100%; padding: 14px 0; font-size: 14px; gap: 5px; }
-  .tabbar a .ti { font-size: 32px; }
+  .tabbar a { flex: none; width: 100%; padding: 14px 0; font-size: 15px; gap: 5px; }
+  .tabbar a .ti { font-size: 34px; }
   .tabbar a.on .ti { transform: scale(1.12); }
   #roamer { bottom: 20px; }
+  .card { padding: 16px 18px; font-size: 16px; }
+  .section-title { font-size: 20px; }
+  .section-title .sub { font-size: 13px; }
+  .btn { font-size: 16px; padding: 13px 0; }
+  .hero h2 { font-size: 30px; }
+  .lesson-hero h2 { font-size: 32px; }
+  .task-row { padding: 14px 16px; }
+  .task-row .txt { font-size: 17px; }
+  .word-chips .chip { font-size: 17px; padding: 8px 16px; }
+  .ex-q .q { font-size: 18px; }
+  .ex-q .a { font-size: 16px; }
+  .lesson-row { font-size: 18px; padding: 13px 14px; }
+  .unit-head { font-size: 18px; }
+  .focus { font-size: 15px; }
+  .hint { font-size: 14px; }
+  #book-embed img, #book-pages img { max-width: 820px; margin: 0 auto; display: block; }
+  .sched-table { font-size: 15px; grid-template-columns: 44px repeat(5, 1fr); gap: 6px; }
+  .sched-table .period { font-size: 14px; }
+  .sched-cell { padding: 10px 6px; line-height: 1.35; }
+  .sched-hint { font-size: 13px; }
+  .stat-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+  .toast { font-size: 16px; }
+  .modal h3 { font-size: 20px; }
+  .checkin-card b { font-size: 17px; }
+  .act-btn b { font-size: 15px; }
+  .subj-card, .course-card { padding: 16px; }
+}
+/* ---------- 大平板（≥900px）：更宽+卡片双栏 ---------- */
+@media (min-width: 900px) {
+  #app { padding-left: 146px; padding-right: 36px; }
   .course-grid { grid-template-columns: repeat(3, 1fr); }
   .checkin-grid { grid-template-columns: repeat(3, 1fr); }
   .act-grid { grid-template-columns: repeat(4, 1fr); }
+  .word-chips .chip { font-size: 18px; }
+  .sched-table { font-size: 16px; grid-template-columns: 48px repeat(5, 1fr); }
 }
-
-/* ================= 浅色主题（纸张白 · 黑白熊的校刊风） ================= */
-body.theme-light {
-  --bg: #F5F2E9;
-  --surface: #FFFFFF;
-  --surface2: #F3EFE4;
-  --surface3: #EAE5D6;
-  --border: #DCD6C4;
-  --gold: #E8B004;
-  --gold-dim: #9A7B1C;
-  --pink: #E01E5A;
-  --blue: #0E8FC4;
-  --green: #4E7D3A;
-  --red: #D94040;
-  --purple: #7A5BD6;
-  --text: #191A17;
-  --dim: #6E6F68;
-}
-body.theme-light .toast { background: #FFFFFF; color: #191A17; border: 1px solid var(--border); }
-body.theme-light .modal { background: #FFFFFF; }
-body.theme-light .modal-mask { background: rgba(80,75,60,.45); }
-body.theme-light .skel { color: var(--gold-dim); }
-
-/* ================= 横屏/大屏优化（平板） ================= */
 @media (min-width: 760px) {
   body { font-size: 16px; }
   #app { max-width: 980px; }

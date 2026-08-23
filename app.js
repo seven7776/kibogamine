@@ -557,7 +557,7 @@
         '<div class="meta"><b>' + s.name + '</b><div>' + s.version + ' · 已完成 ' + done + '/' + total + ' 课</div></div>' +
         '<span class="arrow">›</span></div>';
     });
-    h += '<div class="hint">教材版本：语文部编版 / 数学苏教版 / 英语译林版。内容持续填充中——骨架先搭好，每周往里填新课。</div>';
+    h += '<div class="hint">九科齐了：语数英内容全量；科学/道法目录+课本页就绪，知识点练习本周补；音乐/美术/信息科技/劳动等开学核对版本后建。</div>';
     return h;
   }
 
@@ -566,6 +566,11 @@
     var s = D.CURRICULUM[key];
     if (!s) return '<div class="empty-tip">学科不存在</div>';
     var h = '<div class="back-row"><button data-go="#/study">‹ 返回学科</button></div>';
+    if (!s.units || !s.units.length) {
+      return h + '<div class="lesson-hero"><div class="crumb">' + s.version + '</div><h2 style="color:' + s.color + '">' + s.name + '</h2></div>' +
+        '<div class="card"><div class="hint">这门课等开学拿到课本后补目录和内容（版本先按学校实际用书核对）。现在它已经能出现在课表里、可以加入打卡。</div></div>' +
+        '<div class="card"><div class="hint">先用起来的办法：把这一科的作业/练习拍照存进「每日打卡」自定义项目。</div></div>';
+    }
     h += '<div class="lesson-hero"><div class="crumb">' + s.version + '</div><h2 style="color:' + s.color + '">' + s.name + '</h2>' +
       '<div class="focus">点单元展开课文，点课文开始学习</div></div>';
     if (s.ebook) h += '<a class="btn" style="display:block;width:100%;text-decoration:none;margin-top:8px" href="' + s.ebook + '" target="_blank" rel="noopener">📖 看电子课本（原版课本页）</a>';
@@ -901,7 +906,7 @@
     return '<div class="section-title">设置</div>' +
       '<div class="card">' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="update-btn">🔄 检查更新</button>' +
-      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="theme-btn">' + (S.theme === 'light' ? '🌞 主题：纸张白（点换深夜黑）' : '🌙 主题：深夜黑（点换纸张白）') + '</button>' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="theme-btn">' + (S.theme === 'dark' ? '🌙 主题：深夜黑（点换纸张白）' : '🌞 主题：纸张白（点换深夜黑）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="book-import-btn">📥 从电脑导入整本课本（离线看）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="sound-btn">' + (S.sound === false ? '🔇 音效：关（点我开启）' : '🔊 音效：开（点我关闭）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="export-btn">导出备份（JSON）</button>' +
@@ -1519,13 +1524,14 @@
   function applyTheme(t) {
     document.body.classList.toggle('theme-light', t === 'light');
   }
-  (function () { // 主题尽早应用，避免闪深色
+  (function () { // 主题尽早应用（2026-08-24起默认纸张白，老用户未设置过的也迁移为浅色）
     var t = null;
     try { t = new URLSearchParams(location.search).get('theme'); } catch (e) { }
     if (t !== 'light' && t !== 'dark') {
       try { t = (JSON.parse(localStorage.getItem(LS_KEY)) || {}).theme; } catch (e) { }
     }
-    document.addEventListener('DOMContentLoaded', function () { applyTheme(t || 'dark'); });
+    if (t !== 'light' && t !== 'dark') t = 'light';
+    document.addEventListener('DOMContentLoaded', function () { applyTheme(t); });
   })();
   function boot() {
     decayTick();

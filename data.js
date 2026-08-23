@@ -1795,7 +1795,76 @@
           }
         ]}
       ]
-    }
+    },
+
+    science: {
+      name: '科学', version: '苏教版·五上', icon: '🔬', color: '#5AC8FA',
+      units: [
+        { title: '1 光与色彩', focus: '按课本学习', lessons: [
+            { id: 'kx1-1', title: '1 光源', focus: '1 光与色彩', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx1-2', title: '2 光的传播', focus: '1 光与色彩', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx1-3', title: '3 光的反射', focus: '1 光与色彩', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx1-4', title: '4 七色光', focus: '1 光与色彩', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '2 热传递', focus: '按课本学习', lessons: [
+            { id: 'kx2-1', title: '5 热传导', focus: '2 热传递', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx2-2', title: '6 热对流', focus: '2 热传递', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx2-3', title: '7 热辐射', focus: '2 热传递', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx2-4', title: '8 物体的传热本领', focus: '2 热传递', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '3 地球的表面和内部', focus: '按课本学习', lessons: [
+            { id: 'kx3-1', title: '9 地球的表面', focus: '3 地球的表面和内部', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx3-2', title: '10 火山和地震', focus: '3 地球的表面和内部', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx3-3', title: '11 地球的内部', focus: '3 地球的表面和内部', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx3-4', title: '12 地表雕刻师', focus: '3 地球的表面和内部', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '4 水在自然界的循环', focus: '按课本学习', lessons: [
+            { id: 'kx4-1', title: '13 云和雾', focus: '4 水在自然界的循环', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx4-2', title: '14 露和霜', focus: '4 水在自然界的循环', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx4-3', title: '15 雨和雪', focus: '4 水在自然界的循环', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx4-4', title: '16 水滴的“旅行”', focus: '4 水在自然界的循环', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '5 人体“司令部”', focus: '按课本学习', lessons: [
+            { id: 'kx5-1', title: '17 刺激与反应', focus: '5 人体“司令部”', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx5-2', title: '18 从刺激到反应', focus: '5 人体“司令部”', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx5-3', title: '19 我们的大脑', focus: '5 人体“司令部”', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'kx5-4', title: '20 大脑的开发与利用', focus: '5 人体“司令部”', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '专项学习', focus: '按课本学习', lessons: [
+            { id: 'kx6-1', title: '专项学习 像工程师那样', focus: '专项学习', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] }
+      ]
+    },
+
+    moral: {
+      name: '道德与法治', version: '统编版·五上', icon: '⚖️', color: '#FF9F6B',
+      units: [
+        { title: '第一单元 · 面对成长中的新问题', focus: '按课本学习', lessons: [
+            { id: 'dd1-1', title: '1 自主选择课余生活', focus: '第一单元 · 面对成长中的新问题', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'dd1-2', title: '2 学会沟通交流', focus: '第一单元 · 面对成长中的新问题', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'dd1-3', title: '3 主动拒绝烟酒与毒品', focus: '第一单元 · 面对成长中的新问题', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '第二单元 · 我们是班级的主人', focus: '按课本学习', lessons: [
+            { id: 'dd2-1', title: '4 选举产生班委会', focus: '第二单元 · 我们是班级的主人', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'dd2-2', title: '5 协商决定班级事务', focus: '第二单元 · 我们是班级的主人', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '第三单元 · 我们的国土 我们的家园', focus: '按课本学习', lessons: [
+            { id: 'dd3-1', title: '6 我们神圣的国土', focus: '第三单元 · 我们的国土 我们的家园', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'dd3-2', title: '7 中华民族一家亲', focus: '第三单元 · 我们的国土 我们的家园', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] },
+        { title: '第四单元 · 骄人祖先 灿烂文化', focus: '按课本学习', lessons: [
+            { id: 'dd4-1', title: '8 美丽文字 民族瑰宝', focus: '第四单元 · 骄人祖先 灿烂文化', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'dd4-2', title: '9 古代科技 耀我中华', focus: '第四单元 · 骄人祖先 灿烂文化', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] },
+            { id: 'dd4-3', title: '10 传统美德 源远流长', focus: '第四单元 · 骄人祖先 灿烂文化', preview: [{ type: 'read', text: '通读课本这一课（下方📖可看整页课本）' }], points: [{ title: '本课', text: '跟着老师进度学；点下方📖课本原文整页翻看、离线可读。' }] }
+          ] }
+      ]
+    },
+
+    music: { name: '音乐', version: '版本待开学核对', icon: '🎵', color: '#E58BD8', units: [], pending: true },
+    art: { name: '美术', version: '版本待开学核对', icon: '🎨', color: '#F2B33D', units: [], pending: true },
+    it: { name: '信息科技', version: '版本待开学核对', icon: '💻', color: '#6BD3C7', units: [], pending: true },
+    labor: { name: '劳动', version: '版本待开学核对', icon: '🛠️', color: '#A8B4C4', units: [], pending: true }
+
   };
 
   /* 四年级(8)班课表转录（南通市崇川小学 2025-2026第一学期），作五年级开学前的占位模板 */
