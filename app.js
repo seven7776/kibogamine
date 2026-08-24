@@ -1535,10 +1535,8 @@
         null, '关闭');
       var fi = $('#folder-import', mask);
       var fin = $('#folder-input', mask);
-      if (fi && fin) {
-        fi.onclick = function () { fin.click(); };
-        fin.onchange = function () {
-          var files = Array.prototype.slice.call(fin.files || []);
+      function handleFiles(files) {
+          var files = Array.prototype.slice.call(files || []);
           if (!files.length) return;
           var fst = $('#folder-status', mask);
           var jobs = [];   // {key, file}
@@ -1576,7 +1574,20 @@
             });
             if (i2 % 20 === 0) fst.textContent = '⏳ 导入中 ' + i2 + '/' + jobs.length + ' …';
           })();
-        };
+      }
+      if (fi && fin) {
+        // 优先用带勾选框的系统选择器(新内核), 失败/不支持再退回普通多选
+        if (window.showOpenFilePicker) {
+          fi.onclick = function () {
+            window.showOpenFilePicker({ multiple: true, types: [{ description: '课本页图片(jpg)', accept: { 'image/jpeg': ['.jpg', '.jpeg'] } }] })
+              .then(function (hs) { return Promise.all(hs.map(function (h) { return h.getFile(); })); })
+              .then(handleFiles)
+              .catch(function () { });
+          };
+        } else {
+          fi.onclick = function () { fin.click(); };
+        }
+        fin.onchange = function () { handleFiles(fin.files); };
       }
       var conn = $('#pc-connect', mask);
       if (conn) conn.onclick = function () {
