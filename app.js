@@ -8,6 +8,9 @@
   var D = window.KBG_DATA;
   var LS_KEY = 'kibogamine-v1';
 
+  /* 课→PDF页码映射(离线课本用, 打包进App) */
+  var BOOK_ANCHORS = {"sx2-1":11,"sx2-2":12,"sx2-3":17,"sx2-5":28,"sx4-3":55,"sx5-3":63,"sx5-6":72,"sx6-1":87,"sx6-2":92,"sx7-1":97,"sx8-1":102,"sx8-2":102,"sx1-1":8,"sx1-2":8,"sx2-4":11,"sx3-1":33,"sx3-2":33,"sx3-3":33,"sx4-1":51,"sx4-2":51,"sx5-1":58,"sx5-2":58,"sx5-4":58,"sx5-5":58,"sx9-1":113,"sx9-2":113,"sx9-3":113,"yy1-1":9,"yy1-2":9,"yy1-3":9,"yy1-4":9,"yy2-1":19,"yy2-2":19,"yy3-1":29,"yy3-2":29,"yy4-1":39,"yy4-2":39,"yy5-1":49,"yy5-2":49,"yy6-1":59,"yy6-2":59,"yy7-1":69,"yy7-2":69,"yy8-1":79,"yy8-2":79,"yw1-1":7,"yw1-2":9,"yw1-3":11,"yw1-4":14,"yw1-5":16,"yw1-6":17,"yw2-1":21,"yw2-2":23,"yw2-3":27,"yw2-4":30,"yw3-1":37,"yw3-2":45,"yw3-3":45,"yw3-4":48,"yw3-5":49,"yw3-6":52,"yw4-1":55,"yw4-2":57,"yw4-3":59,"yw4-4":63,"yw4-5":67,"yw5-1":71,"yw5-2":73,"yw5-3":79,"yw6-1":81,"yw6-2":85,"yw6-4":92,"yw6-5":93,"yw7-1":97,"yw7-2":99,"yw7-3":101,"yw7-4":104,"yw7-5":107,"yw8-1":111,"yw8-2":113,"yw8-4":119,"yw8-5":120,"yw2-5":33,"yw6-3":89,"yw8-3":116,"kx1-1":7,"kx1-2":9,"kx1-3":12,"kx1-4":15,"kx2-1":19,"kx2-2":22,"kx2-3":24,"kx2-4":27,"kx3-1":31,"kx3-2":33,"kx3-3":36,"kx3-4":39,"kx4-1":43,"kx4-2":45,"kx4-3":47,"kx4-4":50,"kx5-1":53,"kx5-2":56,"kx5-3":59,"kx5-4":62,"kx6-1":64,"dd1-1":5,"dd1-2":13,"dd1-3":21,"dd2-1":29,"dd2-2":37,"dd3-1":47,"dd3-2":57,"dd4-1":65,"dd4-2":75,"dd4-3":85};
+
   /* ================= 状态 ================= */
   function defaultState() {
     return {
@@ -1248,10 +1251,10 @@
     var emb = $('#book-embed', view);
     if (emb && lid0 && route.indexOf('#/lesson/') === 0) {
       var anch = {};
-      try { anch = JSON.parse(localStorage.getItem('kbpg-anchors') || '{}'); } catch (e) { }
+      try { anch = JSON.parse(localStorage.getItem('kbpg-anchors') || 'null') || BOOK_ANCHORS; } catch (e) { anch = BOOK_ANCHORS; }
       var abk = lid0.slice(0, 2);
       var pg0 = anch[lid0];
-      var bookTotal = { yw: 133, sx: 124, yy: 106 }[abk] || 999;
+      var bookTotal = { yw: 133, sx: 124, yy: 106, kx: 71, dd: 98 }[abk] || 999;
       if (pg0) {
         (function drawEmbed(p) {
           if (p < 1 || p > bookTotal) { toast('到头啦'); return; }
