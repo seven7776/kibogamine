@@ -1528,8 +1528,9 @@
         '<div id="pc-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)">填好地址后点"连接电脑"。</div>' +
         '<div id="pc-books"></div>' +
         '<div class="hint" style="margin:14px 0 6px">方法二：<b>离线文件夹导入</b>（微信收到"课本离线包.zip"→ 用文件管理解压 → 这里选解压出的 bookpack 文件夹）</div>' +
-        '<button class="btn ghost" id="folder-import" style="width:100%">📂 选 bookpack 文件夹导入</button>' +
-        '<input type="file" id="folder-input" webkitdirectory multiple style="display:none">' +
+        '<button class="btn ghost" id="folder-import" style="width:100%">📂 选课本图片导入（可多选）</button>' +
+        '<input type="file" id="folder-input" accept="image/jpeg,image/jpg" multiple style="display:none">' +
+        '<div class="hint" style="margin-top:4px">提示：进到 bookpack 里的 yw（或 sx/yy/kx/dd）文件夹 → 长按第一张图 → 全选 → 打开。一次导一科，可分次。</div>' +
         '<div id="folder-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)"></div>',
         null, '关闭');
       var fi = $('#folder-import', mask);
@@ -1544,7 +1545,7 @@
           var manFile = null;
           files.forEach(function (f) {
             var rp = (f.webkitRelativePath || f.name).replace(/\\/g, '/');
-            var m = rp.match(/(yw|sx|yy|kx|dd)[\/](\d{1,3})\.jpe?g$/i);
+            var m = rp.match(/(yw|sx|yy|kx|dd)[\\/](\d{1,3})\.jpe?g$/i) || f.name.match(/^(yw|sx|yy|kx|dd)[_ -]?(\d{1,3})\.jpe?g$/i);
             if (m) jobs.push({ key: m[1].toLowerCase() + ':' + String(+m[2]).padStart(3, '0'), file: f });
             else if (/manifest\.json$/i.test(rp)) manFile = f;
           });
@@ -1555,12 +1556,12 @@
             };
             mr.readAsText(manFile);
           }
-          if (!jobs.length) { fst.textContent = '这个文件夹里没找到课本页（要选解压出来的 bookpack 文件夹）'; return; }
+          if (!jobs.length) { fst.textContent = '没认出课本图片：请进到 bookpack 里的 yw/sx/yy/kx/dd 文件夹选 jpg；或把文件改名成 yw001.jpg 这种再选。'; return; }
           fi.disabled = true;
           var i2 = 0;
           (function next() {
             if (i2 >= jobs.length) {
-              fst.textContent = '✅ 导入完成：' + jobs.length + ' 页全部进本机！';
+              fst.textContent = '✅ 本次导入 ' + jobs.length + ' 页！（可分次导入，已导过的自动跳过；五本全齐共 532 页）';
               sfx('done'); toast('课本离线包导入完成');
               return;
             }
