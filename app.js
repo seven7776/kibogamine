@@ -1571,11 +1571,11 @@
             mr.readAsText(manFile);
           }
           if (!jobs.length) { fst.textContent = '没认出课本图片：先在上面点选科目，再选纯数字文件名(如001.jpg)；或文件名带科目前缀(yw001.jpg)。'; return; }
-          fi.disabled = true;
+          fi.disabled = false;
           var i2 = 0;
           (function next() {
             if (i2 >= jobs.length) {
-              fst.textContent = '✅ 本次导入 ' + jobs.length + ' 页！（可分次导入，已导过的自动跳过；五本全齐共 532 页）';
+              fst.textContent = '✅ 本批 ' + jobs.length + ' 页已入库！继续点上方按钮再选下一批（图库一次限50张，分11批导完532页；已导过的自动跳过）';
               sfx('done'); toast('课本离线包导入完成');
               return;
             }
