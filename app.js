@@ -606,7 +606,6 @@
     }
     h += '<div class="lesson-hero"><div class="crumb">' + s.version + '</div><h2 style="color:' + s.color + '">' + s.name + '</h2>' +
       '<div class="focus">点单元展开课文，点课文开始学习</div></div>';
-    if (s.ebook) h += '<a class="btn" style="display:block;width:100%;text-decoration:none;margin-top:8px" href="' + s.ebook + '" target="_blank" rel="noopener">📖 看电子课本（原版课本页）</a>';
     s.units.forEach(function (u, ui) {
       h += '<div class="unit-block' + (ui === 0 ? ' open' : '') + '" data-unit>' +
         '<div class="unit-head"><span style="color:' + s.color + '">▸</span><div>' + esc(u.title) +
@@ -617,7 +616,6 @@
         h += '<div class="lesson-row" data-go="' + (l.skeleton ? '' : '#/lesson/' + key + '/' + l.id) + '" data-skel="' + (l.skeleton ? 1 : '') + '">' +
           '<span class="done-mark">' + (st && st.finished ? '🏅' : '·') + '</span>' +
           '<span>' + esc(l.title) + '</span>' +
-          (D.PAGES && D.PAGES[l.id] ? '<a class="book-btn" style="margin-left:auto;text-decoration:none;font-size:19px;line-height:1" href="' + D.PAGES[l.id] + '" target="_blank" rel="noopener" title="看课本原文">📖</a>' : '') +
           (l.skeleton ? '<span class="skel">填充中</span>' : '') + '</div>';
       });
       h += '</div></div>';
@@ -660,9 +658,6 @@
     }
 
     // 课本原文（电子课本页）
-    if (D.PAGES && D.PAGES[l.id]) {
-      h += '<a class="btn" style="display:block;width:100%;text-decoration:none" href="' + D.PAGES[l.id] + '" target="_blank" rel="noopener">📖 课本原文（点开翻页读全文）</a>';
-    }
 
     // 本地课本照片（拍照导入，只存本机）
     h += '<div style="display:flex;gap:8px;margin-top:8px">' +
@@ -1158,9 +1153,6 @@
       });
     });
     // 课行里的📖按钮：直接开书，不进入课文页
-    $$('.book-btn', view).forEach(function (el) {
-      el.addEventListener('click', function (e) { e.stopPropagation(); });
-    });
     // 英语点读：点单词=读+弹卡片
     $$('.speak', view).forEach(function (el) {
       el.addEventListener('click', function (e) {
