@@ -657,3 +657,6 @@ body.theme-light .scene-playing .bh-wall { background: linear-gradient(180deg, #
   .bear-house { min-height: 440px; }
   #pet-canvas { width: 260px; height: 260px; }
 }
+
+.modal { max-height: 88vh; overflow-y: auto; }
+.modal .btn-row { position: sticky; bottom: 0; }

@@ -1528,6 +1528,14 @@
         '<div id="pc-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)">填好地址后点"连接电脑"。</div>' +
         '<div id="pc-books"></div>' +
         '<div class="hint" style="margin:14px 0 6px">方法二：<b>离线文件夹导入</b>（微信收到"课本离线包.zip"→ 用文件管理解压 → 这里选解压出的 bookpack 文件夹）</div>' +
+        '<div class="hint" style="margin:10px 0 6px">先点选<b>当前要导入的科目</b>（纯数字文件名按它入库；yw001式文件名自动识别）：</div>' +
+        '<div id="subj-pick" style="display:flex;gap:6px;flex-wrap:wrap">' +
+          '<button class="btn ghost sp" data-ab="yw" style="flex:1;padding:8px 2px;font-size:14px">语文</button>' +
+          '<button class="btn ghost sp" data-ab="sx" style="flex:1;padding:8px 2px;font-size:14px">数学</button>' +
+          '<button class="btn ghost sp" data-ab="yy" style="flex:1;padding:8px 2px;font-size:14px">英语</button>' +
+          '<button class="btn ghost sp" data-ab="kx" style="flex:1;padding:8px 2px;font-size:14px">科学</button>' +
+          '<button class="btn ghost sp" data-ab="dd" style="flex:1;padding:8px 2px;font-size:14px">道法</button>' +
+        '</div>' +
         '<button class="btn ghost" id="folder-import" style="width:100%">📂 选课本图片导入（可多选）</button>' +
         '<input type="file" id="folder-input" accept="image/jpeg,image/jpg" multiple style="display:none">' +
         '<div class="hint" style="margin-top:4px">提示：进到 bookpack 里的 yw（或 sx/yy/kx/dd）文件夹 → 长按第一张图 → 全选 → 打开。一次导一科，可分次。</div>' +
@@ -1535,6 +1543,14 @@
         null, '关闭');
       var fi = $('#folder-import', mask);
       var fin = $('#folder-input', mask);
+      var curAb = null;
+      $$('.sp', mask).forEach(function (b) {
+        b.addEventListener('click', function () {
+          curAb = b.getAttribute('data-ab');
+          $$('.sp', mask).forEach(function (x) { x.style.borderColor = 'var(--border)'; x.style.opacity = .7; });
+          b.style.borderColor = 'var(--gold)'; b.style.opacity = 1;
+        });
+      });
       function handleFiles(files) {
           var files = Array.prototype.slice.call(files || []);
           if (!files.length) return;
@@ -1545,7 +1561,7 @@
             var rp = (f.webkitRelativePath || f.name).replace(/\\/g, '/');
             var m = rp.match(/(yw|sx|yy|kx|dd)[\\/](\d{1,3})\.jpe?g$/i) || f.name.match(/^(yw|sx|yy|kx|dd)[_ -]?(\d{1,3})\.jpe?g$/i);
             if (m) jobs.push({ key: m[1].toLowerCase() + ':' + String(+m[2]).padStart(3, '0'), file: f });
-            else if (/manifest\.json$/i.test(rp)) manFile = f;
+            else if (curAb) { var pn = f.name.match(/^(\d{1,3})\.jpe?g$/i); if (pn) jobs.push({ key: curAb + ':' + String(+pn[1]).padStart(3, '0'), file: f }); } else if (/manifest\.json$/i.test(rp)) manFile = f;
           });
           if (manFile) {
             var mr = new FileReader();
@@ -1554,7 +1570,7 @@
             };
             mr.readAsText(manFile);
           }
-          if (!jobs.length) { fst.textContent = '没认出课本图片：请进到 bookpack 里的 yw/sx/yy/kx/dd 文件夹选 jpg；或把文件改名成 yw001.jpg 这种再选。'; return; }
+          if (!jobs.length) { fst.textContent = '没认出课本图片：先在上面点选科目，再选纯数字文件名(如001.jpg)；或文件名带科目前缀(yw001.jpg)。'; return; }
           fi.disabled = true;
           var i2 = 0;
           (function next() {
