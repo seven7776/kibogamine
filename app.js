@@ -1118,7 +1118,7 @@
     var bar = $('#tabbar');
     bar.innerHTML = TABS.map(function (t) {
       var on = route.indexOf(t.hash) === 0 || (t.hash === '#/study' && (route.indexOf('#/lesson') === 0 || route.indexOf('#/subject') === 0 || route.indexOf('#/bookview') === 0));
-      return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti" style="background:' + t.bg + '">' + t.icon + '</span>' + t.name + '</a>';
+      return '<a href="' + t.hash + '" class="' + (on ? 'on' : '') + '"><span class="ti">' + (t.svg || t.icon || '') + '</span>' + t.name + '</a>';
     }).join('');
   }
 
