@@ -1522,11 +1522,61 @@
     if (bi2) bi2.addEventListener('click', function () {
       var mask = modal('📥 从电脑导入整本课本',
         '<div class="hint" style="margin-bottom:8px">电脑和这台平板要连<b>同一个Wi-Fi</b>，电脑上的课本服务器要开着（妈妈会保证）。下面填电脑地址。</div>' +
+        '<div class="hint" style="margin-bottom:6px">方法一：电脑和平板连<b>同一个Wi-Fi</b>时可用</div>' +
         '<input id="pc-addr" placeholder="例如 192.168.5.4:8899" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid #555;background:var(--surface3);color:var(--text)">' +
         '<button class="btn" id="pc-connect" style="width:100%;margin-top:8px">连接电脑</button>' +
         '<div id="pc-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)">填好地址后点"连接电脑"。</div>' +
-        '<div id="pc-books"></div>',
+        '<div id="pc-books"></div>' +
+        '<div class="hint" style="margin:14px 0 6px">方法二：<b>离线文件夹导入</b>（微信收到"课本离线包.zip"→ 用文件管理解压 → 这里选解压出的 bookpack 文件夹）</div>' +
+        '<button class="btn ghost" id="folder-import" style="width:100%">📂 选 bookpack 文件夹导入</button>' +
+        '<input type="file" id="folder-input" webkitdirectory multiple style="display:none">' +
+        '<div id="folder-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)"></div>',
         null, '关闭');
+      var fi = $('#folder-import', mask);
+      var fin = $('#folder-input', mask);
+      if (fi && fin) {
+        fi.onclick = function () { fin.click(); };
+        fin.onchange = function () {
+          var files = Array.prototype.slice.call(fin.files || []);
+          if (!files.length) return;
+          var fst = $('#folder-status', mask);
+          var jobs = [];   // {key, file}
+          var manFile = null;
+          files.forEach(function (f) {
+            var rp = (f.webkitRelativePath || f.name).replace(/\\/g, '/');
+            var m = rp.match(/(yw|sx|yy|kx|dd)[\/](\d{1,3})\.jpe?g$/i);
+            if (m) jobs.push({ key: m[1].toLowerCase() + ':' + String(+m[2]).padStart(3, '0'), file: f });
+            else if (/manifest\.json$/i.test(rp)) manFile = f;
+          });
+          if (manFile) {
+            var mr = new FileReader();
+            mr.onload = function () {
+              try { localStorage.setItem('kbpg-anchors', JSON.stringify((JSON.parse(mr.result) || {}).anchors || {})); } catch (e) { }
+            };
+            mr.readAsText(manFile);
+          }
+          if (!jobs.length) { fst.textContent = '这个文件夹里没找到课本页（要选解压出来的 bookpack 文件夹）'; return; }
+          fi.disabled = true;
+          var i2 = 0;
+          (function next() {
+            if (i2 >= jobs.length) {
+              fst.textContent = '✅ 导入完成：' + jobs.length + ' 页全部进本机！';
+              sfx('done'); toast('课本离线包导入完成');
+              return;
+            }
+            var j = jobs[i2++];
+            bookGet(j.key, function (rec) {
+              if (rec && rec.imgs && rec.imgs[0]) { next(); return; }
+              var fr = new FileReader();
+              fr.onload = function () {
+                bookPut({ lid: j.key, imgs: [fr.result], at: Date.now() }, next);
+              };
+              fr.readAsDataURL(j.file);
+            });
+            if (i2 % 20 === 0) fst.textContent = '⏳ 导入中 ' + i2 + '/' + jobs.length + ' …';
+          })();
+        };
+      }
       var conn = $('#pc-connect', mask);
       if (conn) conn.onclick = function () {
         var addr = ($('#pc-addr', mask).value || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
