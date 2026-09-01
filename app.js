@@ -28,10 +28,10 @@
       },
       study: {},          // lessonId -> {tasks:{}, finished, finishedAt}
       checkins: { items: D.DEFAULT_CHECKINS.slice(), log: {} }, // log: date -> {itemId:1}
-      schedule: { grid: JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE)), extra: [], times: ['08:20', '09:10', '10:05', '10:55', '14:00', '14:50', '15:40', '16:25'] },
+      schedule: { grid: JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE)), extra: [], times: (D.DEFAULT_TIMES || ['08:30', '09:45', '10:40', '13:30', '14:25', '15:45', '16:40']).slice() },
       badges: {},         // badgeId -> date
       counters: { guitarDays: 0, lessonsDone: 0, feeds: 0 },
-      scheduleVer: 2      // 1=四(8)占位表 2=五(8)新表(2026-09-01)
+      scheduleVer: 3      // 1=四(8)占位 2=v38误读版(当天废) 3=OCR校正版(2026-09-01)
     };
   }
 
@@ -40,17 +40,24 @@
     S = JSON.parse(localStorage.getItem(LS_KEY)) || defaultState();
   } catch (e) { S = defaultState(); }
   if (!S.pet || !S.schedule) S = defaultState();
-  if (!S.schedule.times) S.schedule.times = ['08:20', '09:10', '10:05', '10:55', '14:00', '14:50', '15:40', '16:25'];
+  if (!S.schedule.times) S.schedule.times = (D.DEFAULT_TIMES || ['08:30', '09:45', '10:40', '13:30', '14:25', '15:45', '16:40']).slice();
 
   function save() { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
 
-  /* 2026-09-01 课表迁移：老用户 localStorage 里还是四(8)占位表(未手动改过)→静默换成五(8)新表；
-   * 手动改过课表的保留用户版。养成数据/积分不动。 */
-  if (S.scheduleVer !== 2) {
-    if (D.SCHEDULE_2025_4TH && JSON.stringify(S.schedule.grid) === JSON.stringify(D.SCHEDULE_2025_4TH)) {
-      S.schedule.grid = JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE));
+  /* 2026-09-01 课表迁移 v3（当天 v2 即废：视觉直读手写表整表读错，v39 起以 OCR 校正版为准）：
+   * 老表(四(8)占位 / v38 误读版)且未手动改过 → 静默换新表+新课时间；手动改过保留用户版。
+   * 养成数据/积分不动。 */
+  if (S.scheduleVer !== 3) {
+    var OLD_GRIDS = [D.SCHEDULE_2025_4TH, D.SCHEDULE_2026_V38].filter(Boolean);
+    var gOld = JSON.stringify(S.schedule.grid);
+    for (var og = 0; og < OLD_GRIDS.length; og++) {
+      if (gOld === JSON.stringify(OLD_GRIDS[og])) {
+        S.schedule.grid = JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE));
+        S.schedule.times = (D.DEFAULT_TIMES || S.schedule.times).slice();
+        break;
+      }
     }
-    S.scheduleVer = 2;
+    S.scheduleVer = 3;
     save();
   }
 
