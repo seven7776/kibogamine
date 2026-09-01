@@ -30,7 +30,8 @@
       checkins: { items: D.DEFAULT_CHECKINS.slice(), log: {} }, // log: date -> {itemId:1}
       schedule: { grid: JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE)), extra: [], times: ['08:20', '09:10', '10:05', '10:55', '14:00', '14:50', '15:40', '16:25'] },
       badges: {},         // badgeId -> date
-      counters: { guitarDays: 0, lessonsDone: 0, feeds: 0 }
+      counters: { guitarDays: 0, lessonsDone: 0, feeds: 0 },
+      scheduleVer: 2      // 1=四(8)占位表 2=五(8)新表(2026-09-01)
     };
   }
 
@@ -42,6 +43,16 @@
   if (!S.schedule.times) S.schedule.times = ['08:20', '09:10', '10:05', '10:55', '14:00', '14:50', '15:40', '16:25'];
 
   function save() { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+
+  /* 2026-09-01 课表迁移：老用户 localStorage 里还是四(8)占位表(未手动改过)→静默换成五(8)新表；
+   * 手动改过课表的保留用户版。养成数据/积分不动。 */
+  if (S.scheduleVer !== 2) {
+    if (D.SCHEDULE_2025_4TH && JSON.stringify(S.schedule.grid) === JSON.stringify(D.SCHEDULE_2025_4TH)) {
+      S.schedule.grid = JSON.parse(JSON.stringify(D.DEFAULT_SCHEDULE));
+    }
+    S.scheduleVer = 2;
+    save();
+  }
 
   /* ================= 工具 ================= */
   function $(s, el) { return (el || document).querySelector(s); }
