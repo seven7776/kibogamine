@@ -1,7 +1,7 @@
 /* 希望峰学园 Service Worker — 缓存优先, 版本更新换 CACHE 名 */
-var CACHE = 'kibogamine-v40';
+var CACHE = 'kibogamine-v41';
 var ASSETS = [
-  './', './index.html', './styles.css', './three.min.js', './pet3d.js', './data.js', './dict.js', './app.js',
+  './', './index.html', './styles.css', './three.min.js', './pet3d.js', './data.js', './dict.js', './app.js', './arcade.js', './arcade.css',
   './manifest.json', './icon-192.png', './icon-512.png'
 ];
 self.addEventListener('install', function (e) {

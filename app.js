@@ -849,6 +849,7 @@
       '<div class="bubble" id="pet-bubble" style="display:none"></div>' +
       '<canvas id="pet-canvas" data-scale="7"></canvas></div>';
 
+    h += '<a class="arcade-entry" href="#/arcade"><span>PLAY / 黑白熊乐园</span><b>准备好一起闯关了吗？ ↗</b><small>躲障碍 · 跳栏杆 · 收星星 · 解锁新场景</small></a>';
     h += '<div class="stat-bars">' +
       statBar('饱腹', p.hunger, 'hunger') +
       statBar('口渴', p.thirst, 'thirst') +
@@ -862,7 +863,7 @@
       { id: 'tickle', ic: '🤏', name: '挠痒痒', cost: 5 },
       { id: 'roll', ic: '🔄', name: '翻身', cost: 5 },
       { id: 'sleep', ic: '😴', name: p.sleeping ? '叫醒' : '哄睡觉', cost: p.sleeping ? 0 : 8 },
-      { id: 'play', ic: '🎮', name: '陪玩', cost: 0 },
+      { id: 'play', ic: '🎮', name: '去闯关', cost: 0 },
       { id: 'bearstudy', ic: '📖', name: '陪学习', cost: 0 },
       { id: 'skin', ic: '🎨', name: '换皮肤', cost: 0 }
     ];
@@ -991,13 +992,18 @@
 
   /* ================= 萌宠互动逻辑 ================= */
   var petPlayer = null;
+  var petFeedback = null;
   function petAct(id, ev) {
     var p = S.pet;
     function after(anim, q, ms) {
+      petFeedback = { anim: anim, text: q, until: Date.now() + (ms || 2400), scene: $('#bear-house') ? $('#bear-house').className : 'bear-house scene-living' };
+      var activeFeedback = petFeedback;
       if (petPlayer) petPlayer.play(anim);
       say(q);
       setTimeout(function () {
-        if (petPlayer && !S.pet.sleeping) petPlayer.play(petGrumpy() ? 'angry' : 'idle');
+        if (petFeedback !== activeFeedback) return;
+        petFeedback = null;
+        if (petPlayer && !S.pet.sleeping) { petPlayer.play(petGrumpy() ? 'angry' : 'idle'); setScene('living'); }
       }, ms || 2400);
     }
     switch (id) {
@@ -1038,10 +1044,7 @@
         }
         break;
       case 'play':
-        p.mood = Math.min(100, p.mood + 6);
-        addXp(2);
-        sfx('bear'); setScene('playing', 5000); interactBonus(); after('happy', quote('tap'), 1800);
-        break;
+        location.hash = '#/arcade'; return;
       case 'bearstudy':
         p.mood = Math.min(100, p.mood + 4);
         addXp(3);
@@ -1138,7 +1141,11 @@
     }).join('');
   }
 
+  var arcadeSession = null;
   function render() {
+    if (arcadeSession) { arcadeSession.destroy(); arcadeSession = null; }
+    if (petPlayer) { petPlayer.stop(); petPlayer = null; }
+    if (window._petBlink) { clearInterval(window._petBlink); window._petBlink = null; }
     var route = location.hash || '#/home';
     renderTabbar(route);
     var html;
@@ -1153,11 +1160,21 @@
     else if (route === '#/schedule') html = renderSchedule();
     else if (route === '#/checkin') html = renderCheckin();
     else if (route === '#/pet') html = renderPet();
+    else if (route === '#/arcade') html = '<div id="bear-arcade"></div>';
     else if (route === '#/settings') html = renderSettings();
     else html = renderHome();
 
     view.innerHTML = html;
     bindViewEvents(route);
+    document.body.classList.toggle('in-arcade',route === '#/arcade');
+    if (route === '#/arcade') {
+      S.arcade = window.BearArcade.normalize(S.arcade);
+      arcadeSession = window.BearArcade.mount($('#bear-arcade'), {
+        state: S.arcade, skin: S.pet.skin, sound: S.sound,
+        save: save,
+        reward: function (stars) { S.pet.mood=Math.min(100,S.pet.mood+stars*3); addXp(stars*3); save(); }
+      });
+    }
     window.scrollTo(0, 0);
   }
 
@@ -1491,8 +1508,10 @@
     if (route === '#/pet') {
       var cv = $('#pet-canvas', view);
       petPlayer = window.MonokumaPet.createPlayer(cv, function () { return S.pet.skin; });
-      petPlayer.play(S.pet.sleeping ? 'sleep' : (petGrumpy() ? 'angry' : 'idle'));
-      setTimeout(function () { say(petGrumpy() ? quote('angry') : greetLine()); }, 500);
+      var feedback = petFeedback && petFeedback.until > Date.now() ? petFeedback : null;
+      petPlayer.play(feedback ? feedback.anim : S.pet.sleeping ? 'sleep' : (petGrumpy() ? 'angry' : 'idle'));
+      if (feedback) say(feedback.text);
+      else setTimeout(function () { if ((location.hash || '#/home') === '#/pet') say(petGrumpy() ? quote('angry') : greetLine()); }, 500);
       // 待机眨眼
       if (window._petBlink) clearInterval(window._petBlink);
       window._petBlink = setInterval(function () {
@@ -1520,6 +1539,7 @@
         });
       });
       setScene(S.pet.sleeping ? 'sleeping' : 'living');
+      if (feedback && $('#bear-house')) $('#bear-house').className = feedback.scene;
 
     } else {
       petPlayer = null;

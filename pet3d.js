@@ -64,12 +64,12 @@
     /* 白肚皮 + X扣 */
     var belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 24), whiteM);
     belly.scale.set(1.18, 1.24, 0.44);           // 原型图: 肚皮占腹约1/3, 加大
-    belly.position.set(0, 0.64, 0.58);
+    belly.position.set(0, 0.64, 0.80);
     bodyG.add(belly);
     var xb1 = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.34, 0.05), darkM);  // X扣加粗
     var xb2 = xb1.clone();
     xb1.rotation.z = 0.62; xb2.rotation.z = -0.62;
-    xb1.position.set(0, 0.64, 0.83); xb2.position.set(0, 0.64, 0.83);
+    xb1.position.set(0, 0.64, 1.04); xb2.position.set(0, 0.64, 1.04);
     bodyG.add(xb1); bodyG.add(xb2);
 
     /* 头 */
@@ -81,10 +81,10 @@
     headG.add(head); parts.head = head;
 
     /* 耳朵: 左白右黑, 大而挺 */
-    var earL = new THREE.Mesh(new THREE.SphereGeometry(0.40, 24, 18), whiteM);
-    earL.position.set(-0.74, 1.00, 0.02); earL.scale.set(1, 1.05, 0.78);
-    var earR = new THREE.Mesh(new THREE.SphereGeometry(0.40, 24, 18), blackM);
-    earR.position.set(0.74, 1.00, 0.02); earR.scale.set(1, 1.05, 0.78);
+    var earL = new THREE.Mesh(new THREE.SphereGeometry(0.31, 24, 18), whiteM);
+    earL.position.set(-0.74, 0.80, 0.02); earL.scale.set(1, 1.05, 0.78);
+    var earR = new THREE.Mesh(new THREE.SphereGeometry(0.31, 24, 18), blackM);
+    earR.position.set(0.74, 0.80, 0.02); earR.scale.set(1, 1.05, 0.78);
     headG.add(earL); headG.add(earR);
 
     /* 左眼: 黑圆眼 */
@@ -94,84 +94,64 @@
 
     /* 右眼: 红色斜上挑(自定义楔形) */
     var eyeShape = new THREE.Shape();
-    eyeShape.moveTo(-0.16, -0.05);
-    eyeShape.lineTo(0.10, 0.05);
-    eyeShape.lineTo(0.24, 0.16);
-    eyeShape.lineTo(0.16, 0.20);
-    eyeShape.lineTo(0.02, 0.12);
-    eyeShape.lineTo(-0.14, 0.06);
-    eyeShape.lineTo(-0.16, -0.05);
+    eyeShape.moveTo(-0.20, -0.02);
+    eyeShape.lineTo(-0.03, 0.045); eyeShape.lineTo(0.025, 0.015);
+    eyeShape.lineTo(0.19, 0.10); eyeShape.lineTo(0.27, 0.23);
+    eyeShape.lineTo(0.20, 0.03);
+    eyeShape.lineTo(0.05, -0.055); eyeShape.lineTo(-0.02, -0.015);
+    eyeShape.lineTo(-0.15, -0.06);
+    eyeShape.closePath();
     var eyeR = new THREE.Mesh(new THREE.ExtrudeGeometry(eyeShape, { depth: 0.05, bevelEnabled: false }), redEyeM);
     eyeR.position.set(0.34, 0.16, 0.88);
     eyeR.rotation.x = -0.12; eyeR.rotation.y = 0.28;
     headG.add(eyeR); parts.eyeR = eyeR;
 
-    /* 口鼻: 白色吻部 + 小黑鼻 */
-    var muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 18), whiteM);
-    muzzle.scale.set(1.12, 0.72, 0.6);
-    muzzle.position.set(-0.02, -0.30, 0.84);
-    headG.add(muzzle);
-    var nose = new THREE.Mesh(new THREE.SphereGeometry(0.10, 16, 12), darkM);
-    nose.scale.set(1.25, 0.8, 0.8);
-    nose.position.set(-0.02, -0.14, 1.02);
-    headG.add(nose);
-
-    /* 咧嘴: 黑色半边大弧度排白牙 + 深色口腔底 */
-    var grinG = new THREE.Group();
-    grinG.position.set(0.40, -0.20, 0.82);
-    grinG.rotation.y = 0.30;
-    headG.add(grinG);
-    var mouth = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 18), mouthM);
-    mouth.scale.set(1.5, 0.62, 0.28);
-    mouth.position.z = -0.02;
-    grinG.add(mouth);
-    /* 牙齿 v3: 上下交错咬合锯齿(原型图核对: 梯形牙/黑牙缝/嘴角上挑坏笑) */
-    function toothGeo(wTop, wBot, h) { // 圆角梯形(bevel 出圆角)
-      var sh = new THREE.Shape();
-      sh.moveTo(-wTop / 2, h / 2); sh.lineTo(wTop / 2, h / 2);
-      sh.lineTo(wBot / 2, -h / 2); sh.lineTo(-wBot / 2, -h / 2); sh.closePath();
-      var g = new THREE.ExtrudeGeometry(sh, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.010, bevelSize: 0.012, bevelSegments: 2 });
-      g.center();
-      return g;
+    /* Closed crescent grin follows the reference: one white band, dark tooth seams.
+       Project every vertex onto the head so the mouth wraps around the cheek. */
+    function facePoint(x,y,offset) {
+      return new THREE.Vector3(x,y,0.987*Math.sqrt(Math.max(0.04,1-x*x/1.1025-y*y/1.016))+offset);
     }
-    var upGeo = toothGeo(0.118, 0.086, 0.108);   // 上牙: 上宽下窄
-    var dnGeo = toothGeo(0.086, 0.118, 0.108);   // 下牙: 下宽上窄
-    function toothMat(seed) {
-      var tm = teethM.clone();
-      tm.color.multiplyScalar(0.93 + (seed % 3) * 0.035);
-      return tm;
+    function faceLine(points, radius, material) {
+      var curve = new THREE.CatmullRomCurve3(points.map(function(p){return facePoint(p[0],p[1],0.025);}));
+      var mesh = new THREE.Mesh(new THREE.TubeGeometry(curve,32,radius,6,false),material);
+      headG.add(mesh); return mesh;
     }
-    var mU = [toothMat(0), toothMat(1), toothMat(2), toothMat(1), toothMat(0), toothMat(2)];
-    var mD = [toothMat(2), toothMat(0), toothMat(1), toothMat(2), toothMat(0), toothMat(1)];
-    for (var i = 0; i < 6; i++) {
-      var fx = (i - 2.5) * 0.144;
-      var k = Math.abs(i - 2.5) / 2.5;
-      var arc = Math.pow(k, 1.55) * 0.155;                    // 嘴角上挑弧
-      var zz = 0.105 - k * k * 0.055;                          // 弧面进深
-      var shrink = 1 - k * 0.30;                               // 边牙递减
-      // 上排牙: 沿弧线向下
-      var tu = new THREE.Mesh(upGeo, mU[i]);
-      tu.scale.setScalar(shrink);
-      tu.position.set(fx, 0.035 + arc * 0.9, zz);
-      tu.rotation.z = (i - 2.5) * -0.105;
-      tu.rotation.x = -k * 0.22;
-      grinG.add(tu);
-      // 下排牙: 错半步交错 → 锯齿中缝
-      var fx2 = fx + 0.075;
-      var k2 = Math.abs(fx2) / 0.40;
-      var arc2 = Math.pow(Math.min(1, k2), 1.55) * 0.150;
-      var td = new THREE.Mesh(dnGeo, mD[i]);
-      td.scale.setScalar((1 - Math.min(1, k2) * 0.34));
-      td.position.set(fx2, -0.045 + arc2, 0.100 - k2 * k2 * 0.05);
-      td.rotation.z = (fx2 / 0.4) * -0.09;
-      td.rotation.x = k2 * 0.18;
-      grinG.add(td);
+    function topSmile(t) { return [-0.23+1.10*t, -0.42-0.28*t+0.58*t*t]; }
+    function bottomSmile(t) { var p=topSmile(t); return [p[0],p[1]-0.22*Math.sin(Math.PI*t)]; }
+    var smileShape=new THREE.Shape();
+    var p0=topSmile(0); smileShape.moveTo(p0[0],p0[1]);
+    var outline=[];
+    for(var si=0;si<=36;si++){var st=topSmile(si/36);smileShape.lineTo(st[0],st[1]);outline.push(st);}
+    for(var sj=36;sj>=0;sj--){var sb=bottomSmile(sj/36);smileShape.lineTo(sb[0],sb[1]);outline.push(sb);}
+    smileShape.closePath();
+    // A tessellated ribbon stays above the curved cheek; a large flat triangle sinks into it.
+    var smileGeo=new THREE.BufferGeometry(), smileVertices=[];
+    function smileVertex(p){var v=facePoint(p[0],p[1],0.018);smileVertices.push(v.x,v.y,v.z);}
+    for(var vi=0;vi<60;vi++){
+      var ta=topSmile(vi/60),tb=topSmile((vi+1)/60),ba=bottomSmile(vi/60),bb=bottomSmile((vi+1)/60);
+      for(var strip=0;strip<5;strip++){
+        function between(a,b,n){return[a[0]+(b[0]-a[0])*n/5,a[1]+(b[1]-a[1])*n/5];}
+        var a=between(ta,ba,strip),b=between(tb,bb,strip),c=between(ta,ba,strip+1),d=between(tb,bb,strip+1);
+        [a,c,b,b,c,d].forEach(smileVertex);
+      }
     }
-    /* 口腔加深一圈(包住牙根, 黑缝感) */
-    var mouthRim = new THREE.Mesh(new THREE.SphereGeometry(0.335, 20, 14), plain('#1E0509', 0.55));
-    mouthRim.scale.set(1.52, 0.56, 0.24);
-    mouthRim.position.z = -0.035;
-    grinG.add(mouthRim);
+    smileGeo.setAttribute('position',new THREE.Float32BufferAttribute(smileVertices,3));
+    smileGeo.computeVertexNormals();
+    headG.add(new THREE.Mesh(smileGeo,teethM));
+    faceLine(outline,0.018,darkM);
+    [0.20,0.36,0.52,0.67,0.80,0.90].forEach(function(t){
+      var u=topSmile(t),d=bottomSmile(Math.min(0.99,t+0.026));
+      faceLine([u,[(u[0]+d[0])/2,(u[1]+d[1])/2],d],0.009,darkM);
+    });
+    /* Two muzzle lobes and the central nose sit over the inner corner of the smile. */
+    [-1,1].forEach(function(side){
+      var edge=new THREE.Mesh(new THREE.SphereGeometry(0.214,24,18),darkM);
+      edge.scale.set(1.06,0.82,0.50);edge.position.set(side*0.128,-0.255,0.954);headG.add(edge);
+      var cheek=new THREE.Mesh(new THREE.SphereGeometry(0.20,24,18),whiteM);
+      cheek.scale.set(1.06,0.82,0.50);cheek.position.set(side*0.128,-0.25,0.974);headG.add(cheek);
+    });
+    var nose=new THREE.Mesh(new THREE.SphereGeometry(0.086,20,16),darkM);
+    nose.scale.set(1.28,0.70,0.65);nose.position.set(0,-0.145,1.085);headG.add(nose);
 
     /* 手臂(肩 pivot) */
     function makeArm(side) { // side: -1左(白) +1右(黑)
@@ -190,7 +170,7 @@
     /* 腿(髋 pivot) */
     function makeLeg(side) {
       var g = new THREE.Group();
-      g.position.set(side * 0.36, 0.30, 0.02);
+      g.position.set(side * 0.36, 0.04, 0.18);
       var m = new THREE.Mesh(new THREE.CapsuleGeometry(0.235, 0.22, 6, 16), side < 0 ? whiteM : blackM);
       m.position.y = -0.16;
       g.add(m);
@@ -306,6 +286,7 @@
   var blinkState = { t: 0 };
   function applyAnim(p, bodyG, name, t, dt) {
     resetPose(p);
+    bodyG.position.set(0,0,0); bodyG.rotation.set(0,0,0); bodyG.scale.set(1,1,1);
     var s;
     switch (name) {
       case 'walk':
@@ -381,8 +362,8 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     var scene = new THREE.Scene();
     var cam = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
-    cam.position.set(0, opts.camY || 1.6, opts.camZ || 6.0);
-    cam.lookAt(0, opts.lookY || 1.28, 0);
+    cam.position.set(0, opts.camY || 1.65, opts.camZ || 7.8);
+    cam.lookAt(0, opts.lookY || 1.45, 0);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2d38, 1.05));
     var key = new THREE.DirectionalLight(0xfff2dd, 1.6);
     key.position.set(2.5, 4, 3);
@@ -393,7 +374,7 @@
 
     var model = null, anim = 'idle', t = 0, last = 0, raf = null;
     function mount() {
-      if (model) scene.remove(model.root);
+      if (model) { scene.remove(model.root); disposeModel(model.root); }
       model = buildModel(skinGetter());
       scene.add(model.root);
     }
@@ -404,9 +385,10 @@
       cam.updateProjectionMatrix();
     }
     mount(); resize();
+    var resizeObserver = new ResizeObserver(resize); resizeObserver.observe(canvas);
     function loop(ts) {
       raf = requestAnimationFrame(loop);
-      if (document.hidden) { last = 0; return; } // 息屏/切后台不渲染, 省电(华为平板)
+      if (document.hidden || !canvas.getClientRects().length) { last = 0; return; } // Hidden roamers and background tabs do not render.
       var now = ts / 1000;
       var dt = Math.min(0.05, now - (last || now));
       last = now; t += dt;
@@ -418,7 +400,7 @@
       play: function (name) { anim = name || 'idle'; },
       current: function () { return anim; },
       redraw: function () { mount(); resize(); }, // 皮肤变化
-      stop: function () { if (raf) cancelAnimationFrame(raf); raf = null; },
+      stop: function () { if (raf) cancelAnimationFrame(raf); raf = null; resizeObserver.disconnect(); disposeModel(model.root); renderer.dispose(); },
       resize: resize
     };
   }
@@ -431,8 +413,8 @@
     stillR.setSize(256, 256);
     stillScene = new THREE.Scene();
     stillCam = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
-    stillCam.position.set(0, 1.6, 6.0);
-    stillCam.lookAt(0, 1.28, 0);
+    stillCam.position.set(0, 1.65, 7.8);
+    stillCam.lookAt(0, 1.45, 0);
     stillScene.add(new THREE.HemisphereLight(0xffffff, 0x2a2d38, 1.05));
     var k = new THREE.DirectionalLight(0xfff2dd, 1.6); k.position.set(2.5, 4, 3); stillScene.add(k);
     var r = new THREE.DirectionalLight(0x8fb8ff, 0.7); r.position.set(-2, 2.5, -3); stillScene.add(r);
@@ -442,7 +424,7 @@
     ensureStill();
     var skinId = opts.skin || 'classic';
     if (!stillModel || stillSkin !== skinId) {
-      if (stillModel) stillScene.remove(stillModel.root);
+      if (stillModel) { stillScene.remove(stillModel.root); disposeModel(stillModel.root); }
       stillModel = buildModel(skinId);
       stillSkin = skinId;
       stillScene.add(stillModel.root);
@@ -474,5 +456,10 @@
     FRAMES: {},
     ANIMS: { idle: 1, blink: 1, walk: 1, sit: 1, sleep: 1, happy: 1, giggle: 1, angry: 1, eat: 1, back: 1 }
   };
-  window.Pet3D = { buildModel: buildModel, createStage: createStage, SKINS: SKINS };
+  function disposeModel(root) {
+    var geometries=new Set(),materials=new Set(),textures=new Set();
+    root.traverse(function(o){if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){materials.add(m);if(m.map)textures.add(m.map);});});
+    geometries.forEach(function(g){g.dispose();}); materials.forEach(function(m){m.dispose();}); textures.forEach(function(t){t.dispose();});
+  }
+  window.Pet3D = { buildModel: buildModel, createStage: createStage, animate: applyAnim, dispose: disposeModel, SKINS: SKINS };
 })();
