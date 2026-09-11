@@ -12,6 +12,7 @@
   // grant its earlier cosmetic tiers, and let them replay the skipped stages.
   function cleared(state){return Object.keys(state.records).reduce(function(n,k){return state.records[k].stars>0?Math.max(n,Number(k)+1):n;},0);}
   function canEnter(state,index){return index>=0&&index<LEVELS.length&&index<=cleared(state);}
+  function travel(position, seconds, dt, speedFactor) { return Math.min(seconds, Math.max(0, position + dt * speedFactor)); }
   function number(i){return String(i+1).padStart(2,'0');}
   var TRAILS = [
     { name: '经典脚步', color: '#ffffff', need: 0 },
@@ -67,6 +68,7 @@
     var rowIndex = 0, rows = [], lane = 0, x = 0, jumpTime = -1, jumpY = 0, hearts = 3, collected = 0;
     var invulnerable = 0, boost = 0, noteTimer = 0, combo = 0, countdown = 3, audio = null, muted = !options.sound;
     var hud, overlay, note, canvas, progress, activeLevel, actualSpeed, finishGate, fx, gearRank;
+    var drive = "normal", usedItems = {}, liveItems = {}, hudValue = "", jumpBuffer = 0;
     function on(target, event, fn, opts) {
       target.addEventListener(event, fn, opts);
       cleanups.push(function () { target.removeEventListener(event, fn, opts); });
@@ -85,6 +87,18 @@
       } catch (_) { /* Audio is optional on older tablet browsers. */ }
     }
     function message(text) { if (note) note.textContent = text; noteTimer = 2.3; }
+    function previewReward(index) {
+      var mask=document.createElement('div'), rank=index+1, reward=WORLD.REWARDS[index], player=null, closed=false;
+      mask.className='modal-mask reward-preview';
+      mask.innerHTML='<section class="modal" role="dialog" aria-modal="true" aria-labelledby="reward-title"><h3 id="reward-title">'+reward[0]+'</h3><p>'+reward[1]+'</p><canvas aria-label="成长装备与特效预览"></canvas><p class="hint">展示到第 '+rank+' 级的装备与特效组合。'+(rank<=cleared(state)?'已获得，进入关卡自动生效。':'尚未获得，此处仅预览，不改变进度。')+'</p><div class="btn-row"><button class="btn ghost" id="reward-turn">转身看背面</button><button class="btn" id="reward-close">返回</button></div></section>';
+      document.body.appendChild(mask);
+      var target=0, fxPreview, previousCycle=-1, focus=document.activeElement;
+      function close(){if(closed)return;closed=true;if(player)player.stop();mask.remove();document.removeEventListener('keydown',key);if(focus&&focus.isConnected)focus.focus();}
+      function key(e){if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){var first=mask.querySelector('#reward-turn'),last=mask.querySelector('#reward-close');if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}
+      mask.querySelector('#reward-close').onclick=close;mask.querySelector('#reward-turn').onclick=function(e){target=target===0?Math.PI:0;e.currentTarget.textContent=target?'转回正面':'转身看背面';};document.addEventListener('keydown',key);cleanups.push(close);
+      try{player=window.Pet3D.createStage(mask.querySelector('canvas'),function(){return options.skin;},{camZ:10,camY:2.6,lookY:1.7,pixelRatio:1.25,decorate:function(model,previewScene){WORLD.equip(model,rank);fxPreview=WORLD.effects(previewScene,rank,null,0);},onFrame:function(model,t,dt){var cycle=Math.floor(t/3),step=t%3,jump=step<0.95?0.8*Math.sin(Math.PI*step/0.95):0;model.root.position.y=jump;model.root.rotation.y+=(target-model.root.rotation.y)*Math.min(1,dt*7);if(cycle!==previousCycle){previousCycle=cycle;fxPreview.burst(new THREE.Vector3(0,0.8,0),5);}fxPreview.update(dt,t,0,jump,2,true);}});}catch(e){mask.querySelector('canvas').replaceWith(document.createTextNode('当前设备无法打开预览，请回地图后重试。'));}
+      mask.querySelector('#reward-close').focus();
+    }
     function releaseScene() {
       if (raf) cancelAnimationFrame(raf); raf = 0;
       if (resizeObserver) resizeObserver.disconnect(); resizeObserver = null;
@@ -102,9 +116,10 @@
         '<div class="arcade-section"><h3>游乐地图</h3><span>已收集 ' + stars + ' / 60 枚关卡星</span></div><div class="arcade-levels">' + LEVELS.map(function (l, i) {
           var locked = !canEnter(state,i), r = state.records[i];
           return (i%4===0?'<div class="arcade-biome-heading"><span>区域 '+(Math.floor(i/4)+1)+' / '+WORLD.BIOMES[l.biome].name+'</span><small>关卡 '+number(i)+'—'+number(i+3)+'</small></div>':'') + '<button class="arcade-level' + (locked ? ' is-locked' : '') + '" data-level="' + i + '" ' + (locked ? 'disabled' : '') + ' style="--level-color:' + l.color + '"><span class="arcade-level-no">' + number(i) + '</span><b>' + l.name + '</b><small>' + l.sub + '</small><small class="arcade-prize">首通奖励 · '+WORLD.REWARDS[i][0]+'</small><span class="arcade-level-foot">' + (locked ? '通过第 '+i+' 关解锁' : '★'.repeat(r.stars) + '☆'.repeat(3 - r.stars) + ' · ' + l.seconds + ' 秒') + '</span></button>';
-        }).join('') + '</div><div class="arcade-section"><h3>成长装备 · Lv.'+rank+'</h3><span>每通过一关，自动穿戴新装备或升级特效</span></div><div class="arcade-rewards">'+WORLD.REWARDS.map(function(r,i){return '<div class="arcade-reward '+(i<rank?'earned':'')+'"><b>'+r[2]+' '+r[0]+'</b><small>'+r[1]+'</small><span>'+(i<rank?'已获得 · 自动生效':'通过第 '+(i+1)+' 关获得')+'</span></div>';}).join('')+'</div><div class="arcade-section"><h3>我的脚步特效</h3><span>挑战进步就能解锁</span></div><div class="arcade-trails">' + TRAILS.map(function (t, i) {
+        }).join('') + '</div><div class="arcade-section"><h3>成长装备 · Lv.'+rank+'</h3><span>每通过一关，自动穿戴新装备或升级特效</span></div><div class="arcade-rewards">'+WORLD.REWARDS.map(function(r,i){return '<button data-reward="'+i+'" class="arcade-reward '+(i<rank?'earned':'')+'"><b>'+r[2]+' '+r[0]+'</b><small>'+r[1]+'</small><span>'+(i<rank?'已获得 · 自动生效':'通过第 '+(i+1)+' 关获得')+'</span></button>';}).join('')+'</div><div class="arcade-section"><h3>我的脚步特效</h3><span>挑战进步就能解锁</span></div><div class="arcade-trails">' + TRAILS.map(function (t, i) {
           return '<button data-trail="' + i + '" class="' + (state.trail === i ? 'selected' : '') + '" ' + (stars < t.need ? 'disabled' : '') + '><i style="background:' + t.color + '"></i>' + t.name + '<small>' + (stars < t.need ? t.need + ' 枚关卡星解锁' : state.trail === i ? '使用中' : '已解锁') + '</small></button>';
         }).join('') + '</div><p class="arcade-rule">每关到达终点得 1 星，收集目标数量再得 1 星，同时保持三颗爱心得第 3 星。关卡星取最好成绩，不重复累加。想休息随时退出，失败不扣奖章。</p></section>';
+      host.querySelectorAll('[data-reward]').forEach(function(b){on(b,'click',function(){previewReward(Number(b.dataset.reward));});});
       var preview = host.querySelector('#arcade-preview');
       var player = window.Pet3D.createStage(preview, function () { return options.skin; }, {camZ:8.6,decorate:function(model){ WORLD.equip(model,rank); }});
       cleanups.push(function () { player.stop(); });
@@ -129,9 +144,9 @@
     }
     function start(index) {
       if (!canEnter(state,index)) return;
-      releaseScene(); selected = index; activeLevel = LEVELS[index]; phase = 'ready';
+      releaseScene(); selected = index; activeLevel = LEVELS[index]; phase = 'ready'; drive='normal';usedItems={};liveItems={};hudValue='';jumpBuffer=0;
       clock = runTime = frameTime = 0; lane = x = collected = combo = invulnerable = boost = 0; jumpTime = -1; jumpY = 0; hearts = 3; rowIndex = 0; rows = waves(index); countdown = 3;
-      host.innerHTML = '<section class="arcade-game"><div class="arcade-toolbar"><button id="arcade-exit">← 地图</button><b>' + number(index) + ' / ' + activeLevel.name + '</b><div><button id="arcade-sound" aria-label="切换声音">' + (muted ? '静音' : '声音开') + '</button><button id="arcade-pause">暂停</button></div></div><div class="arcade-viewport"><canvas aria-label="黑白熊闯关赛道" tabindex="0"></canvas><div class="arcade-hud"></div><div class="arcade-progress"><i></i></div><div class="arcade-note" aria-live="polite"></div><div class="arcade-overlay"></div></div><div class="arcade-controls"><div><button data-move="-1" aria-label="向左换道">◀</button><button data-move="1" aria-label="向右换道">▶</button></div><span>左右换道 · 金栏可跳<br>粉色高墙要绕开</span><button class="arcade-jump" id="arcade-jump">跳跃 ↑</button></div></section>';
+      host.innerHTML = '<section class="arcade-game"><div class="arcade-toolbar"><button id="arcade-exit">← 地图</button><b>' + number(index) + ' / ' + activeLevel.name + '</b><div><button id="arcade-sound" aria-label="切换声音">' + (muted ? '静音' : '声音开') + '</button><button id="arcade-pause">暂停</button></div></div><div class="arcade-viewport"><canvas aria-label="黑白熊闯关赛道" tabindex="0"></canvas><div class="arcade-hud"><span class="arcade-hearts"></span><span></span><span></span></div><div class="arcade-progress"><i></i></div><div class="arcade-note" aria-live="polite"></div><div class="arcade-overlay"></div></div><div class="arcade-controls"><div><button data-move="-1" aria-label="向左换道">◀</button><button data-move="1" aria-label="向右换道">▶</button></div><span>左右换道 · 低障碍可跳<br>粉色高墙要绕开</span><button class="arcade-jump" id="arcade-jump">跳跃 ↑</button></div><div class="arcade-drive" aria-label="前进模式"><button data-drive="reverse" aria-pressed="false">倒退 ↓</button><button data-drive="stop" aria-pressed="false">停止 ■</button><button data-drive="normal" aria-pressed="true">前进 ▶</button><button data-drive="fast" aria-pressed="false">加速 »</button></div></section>';
       canvas = host.querySelector('canvas'); hud = host.querySelector('.arcade-hud'); overlay = host.querySelector('.arcade-overlay'); note = host.querySelector('.arcade-note'); progress = host.querySelector('.arcade-progress i');
       try {
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -168,20 +183,24 @@
       on(host.querySelector('#arcade-exit'), 'click', lobby);
       on(host.querySelector('#arcade-pause'), 'click', pauseToggle);
       on(host.querySelector('#arcade-sound'), 'click', function (e) { muted = !muted; e.currentTarget.textContent = muted ? '静音' : '声音开'; tone(520, 0.1); });
+      host.querySelectorAll('[data-drive]').forEach(function(b){on(b,'click',function(){setDrive(b.dataset.drive);});});
       host.querySelectorAll('[data-move]').forEach(function (b) { on(b, 'pointerdown', function (e) { e.preventDefault(); move(Number(b.dataset.move)); }); });
       on(host.querySelector('#arcade-jump'), 'pointerdown', function (e) { e.preventDefault(); jump(); });
       on(window, 'keydown', function (e) {
         if (e.repeat) return;
-        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'a', 'd', 'w', 'Escape'].indexOf(e.key) < 0) return;
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'a', 'd', 'w', 'ArrowDown', 's', 'f', 'r', 'Escape'].indexOf(e.key) < 0) return;
         e.preventDefault();
         if (e.key === 'Escape') pauseToggle();
+        else if (e.key === 'ArrowDown' || e.key === 'r') setDrive('reverse');
+        else if (e.key === 's') setDrive('stop');
+        else if (e.key === 'f') setDrive('fast');
         else if (e.key === 'ArrowLeft' || e.key === 'a') move(-1);
         else if (e.key === 'ArrowRight' || e.key === 'd') move(1); else jump();
       });
       var down = null;
-      on(canvas, 'pointerdown', function (e) { down = [e.clientX, e.clientY]; canvas.setPointerCapture(e.pointerId); });
+      on(canvas, 'pointerdown', function (e) { if(down)return; down = [e.clientX, e.clientY, e.pointerId]; canvas.setPointerCapture(e.pointerId); });
       on(canvas, 'pointerup', function (e) {
-        if (!down) return; var dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null;
+        if (!down || down[2]!==e.pointerId) return; var dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null;
         if (Math.abs(dx) > 25 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? -1 : 1);
         else if (dy < -25 || Math.abs(dx) < 12 && Math.abs(dy) < 12) jump();
       });
@@ -200,15 +219,25 @@
     }
     function readyOverlay() {
       overlay.hidden = false;
-      overlay.innerHTML = '<div class="arcade-dialog"><p class="arcade-eyebrow">READY / ' + number(selected) + '</p><h3>' + activeLevel.name + '</h3><p>左右按钮或左右滑动换道<br>点击「跳跃」或向上滑动越过金色矮栏<br>粉色高墙请换道；黑色沟槽、横木可跳过<br>三次碰撞后可免费重来</p><p class="arcade-prize">本关首通：'+WORLD.REWARDS[selected][0]+' · '+WORLD.REWARDS[selected][1]+'</p><p>目标：到终点 · 收集 ' + activeLevel.goal + ' 颗星星 · 保持三颗爱心</p><button class="arcade-primary" id="arcade-start">准备好了，出发！</button></div>';
+      overlay.innerHTML = '<div class="arcade-dialog"><p class="arcade-eyebrow">READY / ' + number(selected) + '</p><h3>' + activeLevel.name + '</h3><p>左右按钮或左右滑动换道<br>点击「跳跃」或向上滑动越过金色矮栏<br>粉色高墙请换道；黑色沟槽、横木可跳过<br>三次碰撞后可免费重来<br>倒退重走不重复得星；停止后点「前进」继续<br>加速会缩短反应时间，可随时恢复前进</p><p class="arcade-prize">本关首通：'+WORLD.REWARDS[selected][0]+' · '+WORLD.REWARDS[selected][1]+'</p><p>目标：到终点 · 收集 ' + activeLevel.goal + ' 颗星星 · 保持三颗爱心</p><button class="arcade-primary" id="arcade-start">准备好了，出发！</button></div>';
       overlay.querySelector('#arcade-start').onclick = function () { phase = 'countdown'; overlay.innerHTML = '<strong class="arcade-count">3</strong>'; tone(440, 0.12); };
     }
     function move(direction) { if (phase !== 'running') return; lane = Math.min(1, Math.max(-1, lane + direction)); tone(260 + lane * 50, 0.05); }
-    function jump() { if (phase !== 'running' || jumpTime >= 0) return; jumpTime = 0; tone(580, 0.12); }
+    function setDrive(mode) {
+      if(phase!=='running')return;
+      drive=mode;
+      host.querySelectorAll('[data-drive]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.drive===drive));});
+      message({reverse:'正在倒退 · 星星不会重复计奖',stop:'已停止 · 点前进继续',normal:'正常前进',fast:'正在加速 · 看准障碍再跳'}[drive]);
+    }
+    function jump() {
+      if(phase!=='running'||drive==='stop')return;
+      if(jumpTime>=0){if(jumpTime>0.80)jumpBuffer=0.15;return;}
+      jumpTime=0;jumpBuffer=0;tone(580,0.12);
+    }
     var resumePhase = 'running';
     function pause() {
       if (phase !== 'running' && phase !== 'countdown') return;
-      resumePhase = phase; phase = 'paused'; frameTime = 0;
+      resumePhase = phase; phase = 'paused'; frameTime = 0; jumpBuffer=0;
       overlay.hidden = false; overlay.innerHTML = '<div class="arcade-dialog"><h3>歇一会儿</h3><p>赛道与倒计时都停住了。</p><button class="arcade-primary" id="arcade-resume">继续这一局</button><button id="arcade-paused-exit">回地图</button></div>';
       overlay.querySelector('#arcade-resume').onclick = pauseToggle;
       overlay.querySelector('#arcade-paused-exit').onclick = lobby;
@@ -217,8 +246,10 @@
       if (phase === 'paused') { phase = resumePhase; frameTime = 0; overlay.hidden = phase !== 'countdown'; if (phase === 'countdown') overlay.innerHTML = '<strong class="arcade-count">' + Math.ceil(countdown) + '</strong>'; }
       else pause();
     }
-    function spawn(row) {
-      row.items.forEach(function (item) {
+    function spawn(row, rowId) {
+      row.items.forEach(function (item, itemId) {
+        var id=rowId+':'+itemId, z=3+(runTime-row.at)*activeLevel.speed-(item.offset||0);
+        if(usedItems[id]||liveItems[id]||z < -75||z > 12)return;
         var obj, type = item.type;
         if (type === 'star') { obj = starMesh('#ffe481'); scene.add(obj); obj.position.y = 0.8; }
         else if (type === 'bar') { obj = box(2.6, 0.48, 0.55, '#ffcb54', 0, 0.25, 0); }
@@ -229,13 +260,19 @@
         else { obj = box(2, 2.2, 1, '#f77daa', 0, 0.9, 0); var band = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.24, 1.02), material('#292d43')); band.rotation.z = 0.12; obj.add(band); }
         obj.position.x = item.lane * 3;
         obj.userData.kind = type;
-        obj.position.z = 3 - (row.at - runTime) * actualSpeed - (item.offset || 0);
-        objects.push({ mesh: obj, type: type, lane: item.lane, seed: row.at, used: false });
+        obj.position.z = z;liveItems[id]=true;
+        objects.push({ id:id, offset:item.offset||0, mesh: obj, type: type, lane: item.lane, seed: row.at, used: false });
       });
     }
     function updateHud() {
-      hud.innerHTML = '<span class="arcade-hearts">' + '♥'.repeat(hearts) + '♡'.repeat(3 - hearts) + '</span><span>★ ' + collected + ' / ' + activeLevel.goal + '</span><span>' + Math.max(0, Math.ceil(activeLevel.seconds - runTime)) + ' 秒</span>';
-      progress.style.width = Math.min(100, runTime / activeLevel.seconds * 100) + '%';
+      var seconds=Math.max(0,Math.ceil(activeLevel.seconds-runTime)), value=hearts+':'+collected+':'+seconds;
+      if(value!==hudValue){
+        hudValue=value;var spans=hud.children;
+        spans[0].textContent='♥'.repeat(hearts)+'♡'.repeat(3-hearts);
+        spans[1].textContent='★ '+collected+' / '+activeLevel.goal;
+        spans[2].textContent='约 '+seconds+' 秒路程';
+      }
+      progress.style.width=Math.min(100,runTime/activeLevel.seconds*100)+'%';
     }
     function finish(won) {
       if (phase !== 'running') return;
@@ -254,28 +291,34 @@
       if (document.hidden) { frameTime = 0; return; }
       var dt = frameTime ? Math.min(0.05, (ts - frameTime) / 1000) : 0; frameTime = ts;
       if (phase === 'paused') return;
-      clock += dt;
+      if(phase!=='running'||drive!=='stop')clock += dt;
       if (phase === 'countdown') {
         var before = Math.ceil(countdown); countdown -= dt;
         if (countdown <= 0) { phase = 'running'; overlay.hidden = true; message('出发！左右换道，金栏可跳'); tone(780, 0.18); }
         else if (Math.ceil(countdown) !== before) { overlay.innerHTML = '<strong class="arcade-count">' + Math.ceil(countdown) + '</strong>'; tone(440, 0.1); }
       }
       if (phase === 'running') {
-        runTime += dt; actualSpeed = activeLevel.speed * (boost > 0 ? 1.22 : 1);
+        var factor=drive==='stop'?0:drive==='reverse'?-0.6:drive==='fast'?1.5:1;
+        factor*=boost>0?1.22:1;
+        runTime=travel(runTime,activeLevel.seconds,dt,factor);actualSpeed=activeLevel.speed*factor;
+        var motionDt=drive==='stop'?0:dt;
         finishGate.visible = activeLevel.seconds - runTime < 6;
-        finishGate.position.z = 3 - (activeLevel.seconds - runTime) * actualSpeed;
-        invulnerable = Math.max(0, invulnerable - dt); boost = Math.max(0, boost - dt);
+        finishGate.position.z = 3 - (activeLevel.seconds - runTime) * activeLevel.speed;
+        invulnerable = Math.max(0, invulnerable - motionDt); boost = Math.max(0, boost - motionDt);
         noteTimer -= dt; if (noteTimer <= 0) note.textContent = '';
-        x += (lane * 3 - x) * Math.min(1, dt * 14);
-        if (jumpTime >= 0) { jumpTime += dt; jumpY = 1.55 * Math.sin(Math.PI * Math.min(1, jumpTime / 0.95)); if (jumpTime >= 0.95) { jumpTime = -1; jumpY = 0; } }
-        while (rowIndex < rows.length && rows[rowIndex].at - runTime < 5) spawn(rows[rowIndex++]);
+        x += (lane * 3 - x) * Math.min(1, motionDt * 14);
+        jumpBuffer=Math.max(0,jumpBuffer-motionDt);
+        if (jumpTime >= 0) { jumpTime += motionDt; jumpY = 1.55 * Math.sin(Math.PI * Math.min(1, jumpTime / 0.95)); if (jumpTime >= 0.95) { jumpTime = -1; jumpY = 0; if(jumpBuffer>0)jump(); } }
+        rows.forEach(function(row,i){spawn(row,i);});
         objects.forEach(function (o) {
           if (o.used) return;
-          o.mesh.position.z += actualSpeed * dt;
+          var oldZ=o.mesh.position.z;
+          o.mesh.position.z = 3+(runTime-o.seed)*activeLevel.speed-o.offset;
           if (o.type === 'moving') o.mesh.position.x = o.lane * 3 + Math.sin(clock * 1.4 + o.seed) * 1.25;
           if (o.type === 'sweeper') o.mesh.rotation.y=Math.sin(clock*2.8+o.seed)*0.24;
           if (o.type === 'star') o.mesh.rotation.y += dt * 1.7;
-          if (Math.abs(o.mesh.position.z - 3) < 0.7 && Math.abs(o.mesh.position.x - x) < (o.type === 'star' ? 1 : 1.2)) {
+          var crossesPlayer=Math.min(oldZ,o.mesh.position.z)<3.7 && Math.max(oldZ,o.mesh.position.z)>2.3;
+          if (drive!=='stop' && crossesPlayer && Math.abs(o.mesh.position.x - x) < (o.type === 'star' ? 1 : 1.2)) {
             if (o.type === 'star') {
               o.used = true; o.mesh.visible = false; collected++; combo++; fx.burst(o.mesh.position,combo); tone(500 + Math.min(combo, 12) * 40, 0.07);
               if (combo % 6 === 0) message('连续收集 ' + combo + ' 颗！');
@@ -285,24 +328,25 @@
             }
           }
         });
-        for (var i = objects.length - 1; i >= 0; i--) if (objects[i].mesh.position.z > 12 || objects[i].used) {
+        for (var i = objects.length - 1; i >= 0; i--) if (objects[i].mesh.position.z > 12 || objects[i].mesh.position.z < -75 || objects[i].used) {
+          if(objects[i].used)usedItems[objects[i].id]=true;delete liveItems[objects[i].id];
           scene.remove(objects[i].mesh); window.Pet3D.dispose(objects[i].mesh); objects.splice(i, 1);
         }
-        roadMarks.forEach(function (m) { m.position.z += actualSpeed * dt; if (m.position.z > 10) m.position.z -= 108; });
-        scenery.forEach(function (m) { m.position.z += actualSpeed * dt; if (m.position.z > 14) m.position.z -= 108; });
+        roadMarks.forEach(function (m) { m.position.z += actualSpeed * dt; if (m.position.z > 10) m.position.z -= 108; if (m.position.z < -98) m.position.z += 108; });
+        scenery.forEach(function (m) { m.position.z += actualSpeed * dt; if (m.position.z > 14) m.position.z -= 108; if(m.position.z < -94) m.position.z += 108; });
         sparks.forEach(function (s, i) { s.visible = state.trail > 0; s.position.set(x + Math.sin(clock * 6 + i) * 0.3, 0.05 + i * 0.012, 3 + ((clock * 5 + i * 0.22) % 3)); });
         updateHud();
         if (hearts <= 0) finish(false); else if (runTime >= activeLevel.seconds) finish(true);
       }
-      window.Pet3D.animate(bear.parts, bear.bodyG, phase === 'running' ? 'walk' : phase === 'won' ? 'happy' : phase === 'lost' ? 'sit' : 'idle', clock, dt);
+      window.Pet3D.animate(bear.parts, bear.bodyG, phase === 'running' && drive !== 'stop' ? 'walk' : phase === 'won' ? 'happy' : phase === 'lost' ? 'sit' : 'idle', drive==='reverse'?-clock:clock, dt);
       bear.root.position.set(x, 0.1 + jumpY, 3); bear.root.rotation.z = (lane * 3 - x) * -0.06;
       bear.root.visible = phase !== 'running' || invulnerable <= 0 || Math.sin(clock * 30) > -0.3;
       bear.root.rotation.y += ((phase==='won'?Math.PI*2:Math.PI)-bear.root.rotation.y)*Math.min(1,dt*6);
-      fx.update(dt,clock,x,jumpY,phase==='running'?actualSpeed:0,phase==='running');
+      fx.update(phase==='running'&&drive==='stop'?0:dt,clock,x,jumpY,phase==='running'?actualSpeed:0,phase==='running'&&drive!=='stop');
       renderer.render(scene, camera);
     }
     lobby();
     return { destroy: function () { disposed = true; releaseScene(); if (audio) audio.close().catch(function () {}); } };
   }
-  window.BearArcade = { mount: mount, normalize: normalize, totalStars: totalStars, rating: rating, recordResult: recordResult, waves: waves, LEVELS: LEVELS, cleared: cleared, canEnter: canEnter };
+  window.BearArcade = { mount: mount, normalize: normalize, totalStars: totalStars, rating: rating, recordResult: recordResult, waves: waves, LEVELS: LEVELS, cleared: cleared, canEnter: canEnter, travel: travel };
 })();

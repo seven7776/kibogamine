@@ -77,7 +77,8 @@
     }
     return items;
   }
-  function effects(scene, rank, chosenColor) {
+  function effects(scene, rank, chosenColor, originZ) {
+    originZ = originZ === undefined ? 3 : originZ;
     var T=window.THREE,pool=[],cursor=0,history=[],lastEmit=0;
     var shards=new T.InstancedMesh(new T.OctahedronGeometry(0.08),new T.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:0.92}),120);
     shards.name='star-gold-particles';shards.frustumCulled=false;shards.instanceMatrix.setUsage(T.DynamicDrawUsage);scene.add(shards);
@@ -93,12 +94,12 @@
     function update(dt,t,x,jumpY,speed,running){
       for(var j=0;j<pool.length;j++){var p=pool[j];if(p.life>0){p.life-=dt;p.v.y-=dt*4;p.p.addScaledVector(p.v,dt);p.p.z+=speed*dt*0.3;dummy.position.copy(p.p);dummy.rotation.set(t*3+j,t*4,0);dummy.scale.setScalar(Math.max(0,p.life)*1.5);}else dummy.scale.setScalar(0);dummy.updateMatrix();shards.setMatrixAt(j,dummy.matrix);}shards.instanceMatrix.needsUpdate=true;
       history.forEach(function(h){h.age+=dt;h.z+=speed*dt*0.75;});history=history.filter(function(h){return h.age<0.48;});
-      lastEmit+=dt;if(running&&jumpY>0.06&&rank>=2&&lastEmit>0.016){history.unshift({x:x,y:0.2+jumpY,z:3.25,age:0});lastEmit=0;}if(history.length>29)history.length=29;
+      lastEmit+=dt;if(running&&jumpY>0.06&&rank>=2&&lastEmit>0.016){history.unshift({x:x,y:0.2+jumpY,z:originZ+0.25,age:0});lastEmit=0;}if(history.length>29)history.length=29;
       ribbons.forEach(function(ribbon,ri){ribbon.visible=rank>=(ri===0?2:ri===1?7:18)&&history.length>1;if(!ribbon.visible)return;var arr=ribbon.geometry.attributes.position.array,offset=ri===0?-0.24:ri===1?0.24:0,width=ri===2?0.065:0.10,n=0;
         for(var k=0;k<history.length-1;k++){var a=history[k],b=history[k+1],wa=width*(1-a.age/0.5),wb=width*(1-b.age/0.5);[[a,-wa],[b,-wb],[a,wa],[a,wa],[b,-wb],[b,wb]].forEach(function(pair){arr[n++]=pair[0].x+offset+pair[1];arr[n++]=pair[0].y;arr[n++]=pair[0].z;});}
         ribbon.geometry.setDrawRange(0,n/3);ribbon.geometry.attributes.position.needsUpdate=true;if(rank>=15)ribbon.material.color.setHSL((t*0.13+ri*0.22)%1,0.85,0.68);else if(chosenColor&&ri===0)ribbon.material.color.set(chosenColor);
       });
-      if(rank>=6&&previousJump>0&&jumpY===0){ringLife=0.55;landing.position.set(x,-0.15,3);}
+      if(rank>=6&&previousJump>0&&jumpY===0){ringLife=0.55;landing.position.set(x,-0.15,originZ);}
       previousJump=jumpY;ringLife=Math.max(0,ringLife-dt);landing.material.opacity=ringLife;landing.scale.setScalar(1+(0.55-ringLife)*4);landing.position.z+=speed*dt*0.7;
     }
     return { burst:burst,update:update };

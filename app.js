@@ -70,7 +70,7 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function todayDow() { var d = new Date().getDay(); return d === 0 ? 7 : d; } // 1=一 .. 7=日
-  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   /* ================= 音效（WebAudio 合成，无需音频文件，离线可用） ================= */
   var AC = null;
@@ -493,7 +493,7 @@
     // 学习
     var learnedToday = Object.keys(S.study).some(function (lid) {
       var r = S.study[lid];
-      return r && r.finishedAt && r.finishedAt.slice(0, 10) === t;
+      return r && r.finishedAt && window.AppTools.dayKey(r.finishedAt) === t;
     });
     tasks.push({ id: '_study', subj: '学习', color: 'var(--pink)', text: '完成任意一课跟课学习', short: '跟课学习', pts: 20, done: learnedToday, go: '#/study' });
     // 打卡项
@@ -527,13 +527,21 @@
 
     var h = '';
     h += '<div class="hero"><div class="hero-info">' +
-      '<div class="hi">' + (dow <= 5 ? '今天周' + '一二三四五'[dow - 1] : '今天是周末') + ' · ' + S.pet.name + '在等你</div>' +
+      '<div class="hi">' + (dow <= 5 ? '今天周' + '一二三四五'[dow - 1] : '今天是周末') + ' · ' + esc(S.pet.name) + '在等你</div>' +
       '<h2>你好，<span style="color:var(--gold)">源远</span></h2>' +
-      '<div class="streak">🔥 连续学习 ' + S.streak + ' 天</div>' +
+      '<div class="streak">🔥 连续活跃 ' + ((S.lastActiveDay === dkey() || S.lastActiveDay === dkey(-1)) ? S.streak : 0) + ' 天</div>' +
       '</div><div class="ring-wrap"><svg width="84" height="84">' +
       '<circle cx="42" cy="42" r="' + r + '" stroke="#2A2E38" stroke-width="8" fill="none"/>' +
       '<circle cx="42" cy="42" r="' + r + '" stroke="#FFD24D" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + off + '"/>' +
       '</svg><div class="ring-num"><b>' + pct + '%</b><i>今日进度</i></div></div></div>';
+
+    var recent = window.AppTools.lessonLink(D.CURRICULUM, S.lastLesson);
+    if (recent) h += '<a class="next-step-card" href="' + recent.href + '"><span>接着上次学 · ' + esc(recent.subject) + '</span><b>' + esc(recent.title) + '</b><small>继续学习 →</small></a>';
+    var agenda = [];
+    courses.forEach(function(name,i){ if(name) agenda.push({name:name,time:S.schedule.times[i]||'',kind:'校内'}); });
+    S.schedule.extra.forEach(function(ex){if(Number(ex.dow)===dow)agenda.push({name:ex.name,time:ex.start||'',end:ex.end,kind:'课外班'});});
+    agenda.sort(function(a,b){var am=window.AppTools.minutes(a.time),bm=window.AppTools.minutes(b.time);return (am===null?1500:am)-(bm===null?1500:bm);});
+    h += '<div class="section-title">今天的安排<a href="#/schedule" class="sub">编辑课表 →</a></div><div class="agenda-strip">' + (agenda.length?agenda.map(function(item){return '<a href="#/schedule"><small>'+esc(item.kind)+'</small><b>'+esc(item.time || '时间待定')+(item.end?'–'+esc(item.end):'')+'</b><span>'+esc(item.name)+'</span></a>';}).join(''):'<div class="hint">课表里没有今天的课程安排，可以预习、阅读或自由活动。</div>')+'</div>';
 
     // 今日课程：固定语数英三科（结合今天有没有这节课）
     h += '<div class="section-title">主科直达<span class="sub">点卡片去学</span></div><div class="course-grid">';
@@ -541,7 +549,7 @@
       var sk = pair[0];
       var sub = D.CURRICULUM[sk];
       var hasToday = courses.some(function (c) { return subjOfCourse(c) === sk; });
-      h += '<div class="course-card" data-go="#/study">' +
+      h += '<div class="course-card" data-go="#/subject/' + sk + '">' +
         '<div class="subj"><span class="dot" style="background:' + sub.color + '"></span>' + sub.name + '</div>' +
         '<div class="name">' + (hasToday ? '今天有课 · 跟课走' : '今天无课 · 预习复习') + '</div>' +
         '<button class="go">去学习</button></div>';
@@ -570,7 +578,7 @@
       return (Date.now() - new Date(r.finishedAt).getTime()) < 7 * 86400000;
     }).length;
     h += '<div class="stat-row" style="margin-top:14px">' +
-      '<div class="stat-cell"><b>' + weekLearned + '</b><span>本周学完(课)</span></div>' +
+      '<div class="stat-cell"><b>' + weekLearned + '</b><span>近7天学完(课)</span></div>' +
       '<div class="stat-cell gold"><b>' + S.points + '</b><span>黑白熊奖章</span></div>' +
       '<div class="stat-cell"><b>Lv.' + petLevel() + '</b><span>羁绊等级</span></div></div>';
 
@@ -591,6 +599,7 @@
   /* ---------- 学习·学科列表 ---------- */
   function renderStudy() {
     var h = '<div class="section-title">跟课学习<span class="sub">江苏南通·五年级上册</span></div>';
+    h += '<button class="btn ghost practice-link" data-journal-history>📚 回看练习记录</button>';
     h += '<div class="subj-grid3">';
     Object.keys(D.CURRICULUM).forEach(function (key) {
       var s = D.CURRICULUM[key];
@@ -608,7 +617,7 @@
       '<div class="pv">' + (total ? done + '/' + total + ' 课' : '待建设') + '</div>' +
       '<div class="pbar"><i style="width:' + (total ? Math.round(done / total * 100) : 0) + '%"></i></div></div>';
     });
-    h += '</div><div class="hint">九科齐了：语数英内容全量；科学/道法目录+课本页就绪；音乐/美术/信息科技/劳动等开学核对版本后建。</div>';
+    h += '</div><div class="hint">课程按已配置目录展示；部分课文仍在补充。教材版本和逐课内容以学校实际用书核对，目录齐全不代表内容已全部验证。</div>';
     return h;
   }
 
@@ -620,7 +629,7 @@
     if (!s.units || !s.units.length) {
       return h + '<div class="lesson-hero"><div class="crumb">' + s.version + '</div><h2 style="color:' + s.color + '">' + s.name + '</h2></div>' +
         '<div class="card"><div class="hint">这门课等开学拿到课本后补目录和内容（版本先按学校实际用书核对）。现在它已经能出现在课表里、可以加入打卡。</div></div>' +
-        '<div class="card"><div class="hint">先用起来的办法：把这一科的作业/练习拍照存进「每日打卡」自定义项目。</div></div>';
+        '<div class="card"><div class="hint">先用起来的办法：在「每日打卡」添加自定义项目，用「练习记录」保存作业照片、音频或视频。</div></div>';
     }
     h += '<div class="lesson-hero"><div class="crumb">' + s.version + '</div><h2 style="color:' + s.color + '">' + s.name + '</h2>' +
       '<div class="focus">点单元展开课文，点课文开始学习</div></div>';
@@ -644,6 +653,7 @@
   /* ---------- 课文详情 ---------- */
   function findLesson(key, lid) {
     var s = D.CURRICULUM[key];
+    if (!s || !s.units) return null;
     for (var i = 0; i < s.units.length; i++) {
       var ls = s.units[i].lessons;
       for (var j = 0; j < ls.length; j++) if (ls[j].id === lid) return { subject: s, unit: s.units[i], lesson: ls[j] };
@@ -655,6 +665,7 @@
     var found = findLesson(key, lid);
     if (!found) return '<div class="empty-tip">课文不存在</div>';
     var s = found.subject, u = found.unit, l = found.lesson;
+    if (S.lastLesson !== lid) { S.lastLesson = lid; save(); }
     var st = S.study[l.id] || { tasks: {}, finished: false };
     var typeName = { read: '朗读', write: '书写', listen: '听力', speak: '开口', quiz: '练习', observe: '观察' };
 
@@ -683,6 +694,8 @@
       '<button class="btn ghost" style="flex:1;display:none" id="photo-view">📚 本地课本</button></div>' +
       '<input type="file" id="photo-file" accept="image/*" multiple style="display:none">' +
       '<div class="hint" style="margin-top:6px">拍下的课本页只存在这台平板里，不上网，没网也能翻。</div>';
+
+    h += '<button class="btn ghost practice-link" data-journal="lesson:' + l.id + '" data-journal-title="' + esc(l.title) + '">📎 练习记录 · 作业照片 / 跟读音频 / 视频</button><div class="hint">勾选代表自主记录；附件不会自动判分。练习留痕后可以和家长一起回看。</div>';
 
     // 预习任务
     if (l.preview && l.preview.length) {
@@ -737,9 +750,9 @@
       h += '<button class="btn ghost" style="width:100%;margin-top:8px" id="rnd-word">🎲 随机考单词</button>';
 
     // 完成按钮
-    var allDone = l.preview && l.preview.every(function (t, i) { return st.tasks['p' + i]; });
+    var allDone = !l.preview || l.preview.every(function (t, i) { return st.tasks['p' + i]; });
     h += '<button class="btn" style="width:100%;margin-top:6px" id="finish-lesson" data-lesson="' + l.id + '"' +
-      (st.finished ? ' disabled style="opacity:.5;width:100%;margin-top:6px"' : '') + '>' +
+      (st.finished || !allDone ? ' disabled' : '') + '>' +
       (st.finished ? '本课已完成 🏅' : (allDone ? '完成本课 · +20 奖章' : '先完成上面的预习任务')) + '</button>';
     if (!l.preview || !l.preview.length) {
       // 无预习任务的课直接可完成 — 目前所有正式课都有预习任务，保底逻辑
@@ -778,7 +791,7 @@
     h += band('午休', '12:00 - 14:00 · 吃饭 午睡 充电', 'noon');
     h += band('下午', '第 5 ~ 8 节', 'pm');
     for (var j = 4; j < 8; j++) h += row(j);
-    h += '<div class="sched-hint">开学拿到五年级新课表后，点格子直接改；时间是估的，点时间就能改。</div></div>';
+    h += '<div class="sched-hint">点课程或时间即可修改；课外班可编辑星期和起止时间。时间安排请按学校与课外班的实际通知核对。</div></div>';
 
     h += '<div class="section-title">课外班<span class="sub">点方块编辑</span></div><div class="extra-grid">';
     S.schedule.extra.forEach(function (ex, xi) {
@@ -801,27 +814,20 @@
     }
     return res;
   }
-  function streakOf(itemId) {
-    var n = 0;
-    for (var o = 0; o > -60; o--) {
-      var log = S.checkins.log[dkey(o)] || {};
-      if (log[itemId]) n++; else if (o < 0) break; else break;
-    }
-    return n;
-  }
+  function streakOf(itemId) { return window.AppTools.streak(S.checkins.log, itemId); }
   function renderCheckin() {
     var t = dkey();
     var log = S.checkins.log[t] || {};
-    var h = '<div class="section-title">每日打卡<span class="sub">打卡一次 +' + (S.checkins.items[0] ? S.checkins.items[0].points : 10) + ' 奖章</span></div>';
-    h += '<div class="checkin-grid">';
+    var h = '<div class="section-title">每日打卡<span class="sub">完成后自主打卡 · 奖章见各项目</span></div><p class="hint">练习记录可保存照片、音频和视频。今天还没打卡时，连续天数会保留到昨天。</p>';
+    h += '<button class="btn ghost practice-link" data-journal-history>📚 回看全部练习记录</button><div class="checkin-grid">';
     S.checkins.items.forEach(function (it) {
       var done = !!log[it.id];
       var week = weekLog(it.id);
       h += '<div class="checkin-card' + (done ? ' done-today' : '') + '">' +
-        '<div class="ic">' + it.icon + '</div><b>' + esc(it.name) + '</b>' +
+        '<div class="ic">' + esc(it.icon) + '</div><b>' + esc(it.name) + '</b>' +
         '<div class="streak">连续 ' + streakOf(it.id) + ' 天</div>' +
         '<div class="week">' + week.map(function (on) { return '<i class="' + (on ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
-        '<button class="big-btn" data-checkin="' + it.id + '"' + (done ? ' disabled' : '') + '>' + (done ? '今日已打卡 ✓' : '打卡 +' + it.points) + '</button></div>';
+        '<button class="big-btn" data-checkin="' + it.id + '"' + (done ? ' disabled' : '') + '>' + (done ? '今日已打卡 ✓' : '打卡 +' + it.points) + '</button><button class="btn ghost practice-link" data-journal="checkin:' + t + ':' + esc(it.id) + '" data-journal-title="' + esc(it.name) + ' · ' + t + '">📎 练习记录</button></div>';
     });
     h += '</div>';
     h += '<button class="btn ghost" style="width:100%;margin-top:10px" id="add-checkin">+ 添加打卡项目</button>';
@@ -983,11 +989,12 @@
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="book-import-btn">📥 从电脑导入整本课本（离线看）</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="sound-btn">' + (S.sound === false ? '🔇 音效：关（点我开启）' : '🔊 音效：开（点我关闭）') + '</button>' +
       '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="export-btn">导出备份（JSON）</button>' +
-      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="import-btn">导入备份</button>' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="import-btn">导入进度 / 练习附件备份</button>' +
+      '<button class="btn ghost" style="width:100%;margin-bottom:10px" id="journal-export">导出练习记录与附件</button>' +
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
-      '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">清空重来</button>' +
-      '<div class="hint">数据只存在这台设备的浏览器里。换手机/清浏览器前，先导出备份发给家长微信存好。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v1.5 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">重置进度</button>' +
+      '<div class="hint">进度备份包含奖章、课表、学习、打卡和游戏进度。练习文字与照片/音视频请另点“导出练习记录与附件”。本地课本照片仍需单独保留原图。换设备前请分别备份。</div></div>' +
+      '<div class="card"><div class="hint">希望之峰 v43 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -1143,6 +1150,8 @@
 
   var arcadeSession = null;
   function render() {
+    window.PracticeJournal.close();
+    stopSpeak();
     if (arcadeSession) { arcadeSession.destroy(); arcadeSession = null; }
     if (petPlayer) { petPlayer.stop(); petPlayer = null; }
     if (window._petBlink) { clearInterval(window._petBlink); window._petBlink = null; }
@@ -1179,6 +1188,8 @@
   }
 
   function bindViewEvents(route) {
+    $$('[data-journal]', view).forEach(function(el){el.onclick=function(){window.PracticeJournal.open({id:el.dataset.journal,title:el.dataset.journalTitle});};});
+    $$('[data-journal-history]', view).forEach(function(el){el.onclick=window.PracticeJournal.history;});
     // 跳转
     $$('[data-go]', view).forEach(function (el) {
       el.addEventListener('click', function () {
@@ -1216,8 +1227,9 @@
         '<input id="quiz-in" inputmode="decimal" placeholder="在这里写答案" style="width:100%;padding:10px;font-size:18px;border-radius:10px;border:1px solid #555;background:var(--surface3);color:var(--text)">' +
         '<div id="quiz-fb" style="color:var(--pink);font-size:13px;margin-top:6px;min-height:18px"></div>',
         function (mk) {
-          var v = parseFloat($('#quiz-in', mk).value);
-          if (isNaN(v)) { $('#quiz-fb', mk).textContent = '先写个数字再交卷哦'; return false; }
+          var answer = $('#quiz-in', mk).value.trim();
+          var v = answer === '' ? NaN : Number(answer);
+          if (!Number.isFinite(v)) { $('#quiz-fb', mk).textContent = '先写个数字再交卷哦'; return false; }
           if (Math.abs(v - g.a) < 0.005) { sfx('good'); earn(2, '答对随机题'); }
           else {
             sfx('wrong');
@@ -1405,25 +1417,21 @@
         setTimeout(function () { var i = $('#cell-input'); if (i) i.focus(); }, 50);
       });
     });
-    // 课外班方块编辑
-    $$('[data-edit-extra]', view).forEach(function (el) {
-      el.addEventListener('click', function (e) {
-        if (e.target.hasAttribute('data-del-extra')) return;
-        var xi = +el.getAttribute('data-edit-extra');
-        var ex = S.schedule.extra[xi];
-        if (!ex) return;
-        modal('改课外班',
-          '<input id="ex-name" value="' + esc(ex.name) + '" placeholder="名字" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text);margin-bottom:8px">' +
-          '<input id="ex-start" value="' + esc(ex.start || '') + '" placeholder="开始 如 18:30" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text);margin-bottom:8px">' +
-          '<input id="ex-end" value="' + esc(ex.end || '') + '" placeholder="结束 如 20:00" style="width:100%;padding:10px;font-size:16px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text)">',
-          function () {
-            S.schedule.extra[xi].name = $('#ex-name').value.trim() || '课外班';
-            S.schedule.extra[xi].start = $('#ex-start').value.trim();
-            S.schedule.extra[xi].end = $('#ex-end').value.trim();
-            save(); render();
-          });
-      });
-    });
+    function editExtra(index) {
+      var ex = index === undefined ? {name:'',dow:todayDow(),start:'',end:''} : S.schedule.extra[index];
+      modal(index === undefined ? '添加课外班' : '修改课外班',
+        '<label>名称<input id="ex-name" maxlength="60" value="'+esc(ex.name)+'" placeholder="如：钢琴课"></label>'+
+        '<label>星期<select id="ex-dow">'+[1,2,3,4,5,6,7].map(function(d){return '<option value="'+d+'"'+(d===Number(ex.dow)?' selected':'')+'>'+DOW_NAME[d]+'</option>';}).join('')+'</select></label>'+
+        '<label>开始<input id="ex-start" type="time" value="'+esc(ex.start||'')+'"></label><label>结束<input id="ex-end" type="time" value="'+esc(ex.end||'')+'"></label><p class="form-error" id="extra-error" role="status"></p>',
+        function(mask){
+          var draft={name:$('#ex-name',mask).value.trim(),dow:Number($('#ex-dow',mask).value),start:$('#ex-start',mask).value,end:$('#ex-end',mask).value};
+          var error=window.AppTools.extraError(draft,S.schedule.extra,index);
+          if(error){$('#extra-error',mask).textContent=error;return false;}
+          if(index===undefined)S.schedule.extra.push(draft);else S.schedule.extra[index]=draft;
+          save();render();
+        });
+    }
+    $$('[data-edit-extra]', view).forEach(function(el){el.onclick=function(e){if(e.target.closest('[data-del-extra]'))return;editExtra(Number(el.dataset.editExtra));};});
     // 节次时间编辑
     $$('[data-edit-time]', view).forEach(function (el) {
       el.addEventListener('click', function () {
@@ -1431,31 +1439,16 @@
         modal('改第' + (pi + 1) + '节时间',
           '<input id="ti-in" value="' + esc(S.schedule.times[pi] || '') + '" placeholder="如 08:20" style="width:100%;padding:10px;font-size:18px;border-radius:10px;border:1px solid var(--border);background:var(--surface3);color:var(--text)">',
           function () {
-            S.schedule.times[pi] = $('#ti-in').value.trim() || S.schedule.times[pi];
+            var value = $('#ti-in').value.trim();
+            if (window.AppTools.minutes(value) === null) { toast('时间请填写为 HH:MM，例如 08:20'); return false; }
+            S.schedule.times[pi] = value;
             save(); render();
           });
       });
     });
     // 课外班
     var ae = $('#add-extra', view);
-    if (ae) ae.addEventListener('click', function () {
-      modal('添加课外班',
-        '<input id="ex-name" placeholder="名称，如：钢琴课">' +
-        '<select id="ex-dow">' + [1, 2, 3, 4, 5, 6, 7].map(function (d) { return '<option value="' + d + '">' + DOW_NAME[d] + '</option>'; }).join('') + '</select>' +
-        '<input id="ex-start" placeholder="开始时间，如 16:30">' +
-        '<input id="ex-end" placeholder="结束时间，如 17:30">',
-        function (mask) {
-          var name = $('#ex-name', mask).value.trim();
-          if (!name) { toast('名称不能为空'); return false; }
-          S.schedule.extra.push({
-            name: name,
-            dow: +$('#ex-dow', mask).value,
-            start: $('#ex-start', mask).value.trim() || '待定',
-            end: $('#ex-end', mask).value.trim() || ''
-          });
-          save(); render();
-        });
-    });
+    if (ae) ae.addEventListener('click', function () { editExtra(); });
     $$('[data-del-extra]', view).forEach(function (el) {
       el.addEventListener('click', function () {
         S.schedule.extra.splice(+el.getAttribute('data-del-extra'), 1);
@@ -1666,18 +1659,21 @@
       };
     });
     var ub = $('#update-btn', view);
-    if (ub) ub.addEventListener('click', function () {
-      toast('强制刷新中…');
-      // 先把本地缓存全清掉，再重载：重载后所有文件都从网上拿最新的
-      if ('caches' in window) {
-        caches.keys().then(function (keys) {
-          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-        }).then(function () {
-          if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then(function (r) { return r && r.update(); }).catch(function () { });
-          setTimeout(function () { location.reload(true); }, 400);
-        }).catch(function () { location.reload(true); });
-      } else location.reload(true);
+    if (ub) ub.addEventListener('click', async function () {
+      if (!navigator.onLine) { toast('当前离线，已保留缓存；联网后再检查更新'); return; }
+      ub.disabled=true;ub.textContent='正在检查更新…';
+      try {
+        if (!('serviceWorker' in navigator)) { toast('当前浏览器不支持自动更新，请联网重新打开'); return; }
+        var registration=await navigator.serviceWorker.getRegistration();
+        if(!registration){toast('请联网重新打开应用以启用离线缓存');return;}
+        await registration.update();
+        if(registration.waiting)registration.waiting.postMessage('SKIP_WAITING');
+        toast(registration.installing||registration.waiting?'发现更新，下载完成后自动刷新':'已检查，当前没有可用更新');
+      } catch(e){toast('更新检查未完成，原有离线内容保留，请稍后重试');}
+      finally {ub.disabled=false;ub.textContent='🔄 检查更新';}
     });
+    var journalExport=$('#journal-export',view);
+    if(journalExport)journalExport.onclick=function(){journalExport.disabled=true;window.PracticeJournal.exportBackup().then(function(n){toast('已导出 '+n+' 条练习记录及附件');}).catch(function(e){toast(e.message||'导出失败');}).finally(function(){journalExport.disabled=false;});};
     var sb = $('#sound-btn', view);
     if (sb) sb.addEventListener('click', function () {
       S.sound = (S.sound === false);
@@ -1692,7 +1688,8 @@
       a.href = URL.createObjectURL(blob);
       a.download = '希望之峰备份-' + dkey() + '.json';
       a.click();
-      toast('备份已下载');
+      setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+      toast('进度备份已下载，练习附件请单独导出');
     });
     var im = $('#import-btn', view);
     if (im) im.addEventListener('click', function () { $('#import-file', view).click(); });
@@ -1704,16 +1701,21 @@
       r.onload = function () {
         try {
           var data = JSON.parse(r.result);
-          if (!data.pet) throw 0;
-          S = data; save(); render();
-          toast('导入成功！');
-        } catch (e) { toast('备份文件不对'); }
+          if(data.format === 'kibogamine-practice-v1') {
+            modal('导入练习附件', '<p>合并备份中的记录；相同练习记录会被备份版本替换。其他记录和学习进度保留。</p>',function(){window.PracticeJournal.importBackup(data).then(function(n){toast('已导入 '+n+' 条练习记录');}).catch(function(e){toast(e.message);});});return;
+          }
+          var next=window.AppTools.restore(data,defaultState());
+          modal('恢复进度备份','<p>这会替换当前奖章、课表、学习、打卡和游戏进度。建议先导出当前进度。练习附件不受影响。</p>',function(){
+            try {localStorage.setItem(LS_KEY,JSON.stringify(next));S=next;applyTheme(S.theme);render();toast('进度已恢复');}
+            catch(e){toast('恢复失败，本机空间可能不足');return false;}
+          },'恢复这份备份');
+        } catch (e) { toast(e.message || '备份文件不对，当前进度保留'); }
       };
       r.readAsText(f);
     });
     var rs = $('#reset-btn', view);
     if (rs) rs.addEventListener('click', function () {
-      modal('清空重来', '<div style="font-size:14px;color:var(--pink);margin-bottom:8px">奖章、打卡、课表、羁绊全都会删掉，确定吗？建议先导出备份。</div>', function () {
+      modal('重置进度', '<div style="font-size:14px;color:var(--pink);margin-bottom:8px">奖章、学习、打卡、课表、游戏进度和羁绊都会重置。练习记录附件和本地课本保留。建议先导出进度备份。</div>', function () {
         S = defaultState(); save(); render();
         toast('已清空，重新开始');
       });

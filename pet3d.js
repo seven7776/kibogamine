@@ -361,7 +361,7 @@
   function createStage(canvas, skinGetter, opts) {
     opts = opts || {};
     var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, opts.pixelRatio || 2));
     var scene = new THREE.Scene();
     var cam = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
     cam.position.set(0, opts.camY || 1.65, opts.camZ || 7.8);
@@ -378,7 +378,7 @@
     function mount() {
       if (model) { scene.remove(model.root); disposeModel(model.root); }
       model = buildModel(skinGetter());
-      if (opts.decorate) opts.decorate(model);
+      if (opts.decorate) opts.decorate(model, scene);
       scene.add(model.root);
     }
     function resize() {
@@ -396,6 +396,7 @@
       var dt = Math.min(0.05, now - (last || now));
       last = now; t += dt;
       applyAnim(model.parts, model.bodyG, anim, t, dt);
+      if (opts.onFrame) opts.onFrame(model, t, dt);
       renderer.render(scene, cam);
     }
     raf = requestAnimationFrame(loop);
@@ -403,7 +404,7 @@
       play: function (name) { anim = name || 'idle'; },
       current: function () { return anim; },
       redraw: function () { mount(); resize(); }, // 皮肤变化
-      stop: function () { if (raf) cancelAnimationFrame(raf); raf = null; resizeObserver.disconnect(); disposeModel(model.root); renderer.dispose(); },
+      stop: function () { if (raf) cancelAnimationFrame(raf); raf = null; resizeObserver.disconnect(); disposeModel(scene); renderer.dispose(); },
       resize: resize
     };
   }
