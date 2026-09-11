@@ -71,6 +71,8 @@
     xb1.rotation.z = 0.62; xb2.rotation.z = -0.62;
     xb1.position.set(0, 0.64, 1.04); xb2.position.set(0, 0.64, 1.04);
     bodyG.add(xb1); bodyG.add(xb2);
+    var tail = new THREE.Mesh(new THREE.SphereGeometry(0.18,16,12),fur);
+    tail.position.set(0,0.44,-0.81); tail.scale.z=0.8; bodyG.add(tail);
 
     /* 头 */
     var headG = new THREE.Group();
@@ -376,6 +378,7 @@
     function mount() {
       if (model) { scene.remove(model.root); disposeModel(model.root); }
       model = buildModel(skinGetter());
+      if (opts.decorate) opts.decorate(model);
       scene.add(model.root);
     }
     function resize() {
