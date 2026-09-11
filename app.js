@@ -235,8 +235,10 @@
   }
   function bookPut(rec, cb) {
     bookDb(function (db) {
-      var r = db.transaction('pages', 'readwrite').objectStore('pages').put(rec);
-      r.onsuccess = function () { cb && cb(); };
+      var tx = db.transaction('pages', 'readwrite');
+      tx.objectStore('pages').put(rec);
+      tx.oncomplete = function () { cb && cb(); };
+      tx.onabort = function () { toast('图片未保存，请检查本机存储空间后重试'); };
     });
   }
   function bookDel(lid, cb) {
@@ -262,36 +264,40 @@
       URL.revokeObjectURL(url);
       cb(cv.toDataURL('image/jpeg', 0.8));
     };
-    img.onerror = function () { toast('这张图读不出来，换一张试试'); };
+    img.onerror = function () { URL.revokeObjectURL(url); toast('这张图读不出来，换一张试试'); cb(null); };
     img.src = url;
   }
   /* 从电脑批量导入整本书（图存在电脑，通过家庭Wi-Fi拉进平板） */
   function importBook(ab, pages, addr, btn) {
+    var available=0,failed=0;
     btn.disabled = true;
     btn.textContent = '⏳ ' + ab + ' 准备中…';
     sfx('check');
     function next(n) {
       if (n > pages) {
-        btn.textContent = '✅ ' + ab + ' 已导入（' + pages + '页）';
-        sfx('done'); toast('导入完成！点开每课直接看课本页');
+        btn.disabled=false;
+        btn.textContent = ab + ' 可读 ' + available + ' 页' + (failed?'，失败 '+failed+' 页，点此重试':'，导入完成');
+        sfx('done'); toast(failed?'部分图片未导入，可以重试补齐':'图片已保存，请核对课本版本并设置课文首页');
         return;
       }
       var key = ab + ':' + String(n).padStart(3, '0');
       bookGet(key, function (rec) {
-        if (rec && rec.imgs && rec.imgs[0]) { next(n + 1); return; } // 已导入的页跳过
+        if (rec && rec.imgs && rec.imgs[0]) { available++; next(n + 1); return; } // 已导入的页跳过
         fetch('http://' + addr + '/img/' + ab + '/' + String(n).padStart(3, '0') + '.jpg')
           .then(function (r) { if (!r.ok) throw 0; return r.blob(); })
           .then(function (bl) {
             var fr = new FileReader();
             fr.onload = function () {
               bookPut({ lid: key, imgs: [fr.result], at: Date.now() }, function () {
+                available++;
                 if (n % 10 === 0 || n === pages) btn.textContent = '⏳ ' + ab + ' 导入中 ' + n + '/' + pages;
                 next(n + 1);
               });
             };
+            fr.onerror = function () { failed++; next(n+1); };
             fr.readAsDataURL(bl);
           })
-          .catch(function () { next(n + 1); }); // 单页失败跳过继续
+          .catch(function () { failed++; next(n + 1); }); // 单页失败计数，允许补齐
       });
     }
     next(1);
@@ -994,7 +1000,7 @@
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">重置进度</button>' +
       '<div class="hint">进度备份包含奖章、课表、学习、打卡和游戏进度。练习文字与照片/音视频请另点“导出练习记录与附件”。本地课本照片仍需单独保留原图。换设备前请分别备份。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v43 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v44 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -1286,32 +1292,14 @@
       }).join('');
     }
     var lid0 = pageLid();
-    // 整本书离线页：课文页内嵌课本图+翻页
+    // Prefer exact lesson photos, then allow explicit page binding for the current edition.
     var emb = $('#book-embed', view);
-    if (emb && lid0 && route.indexOf('#/lesson/') === 0) {
-      var anch = {};
-      try { anch = JSON.parse(localStorage.getItem('kbpg-anchors') || 'null') || BOOK_ANCHORS; } catch (e) { anch = BOOK_ANCHORS; }
-      var abk = lid0.slice(0, 2);
-      var pg0 = anch[lid0];
-      var bookTotal = { yw: 133, sx: 124, yy: 106, kx: 71, dd: 98 }[abk] || 999;
-      if (pg0) {
-        (function drawEmbed(p) {
-          if (p < 1 || p > bookTotal) { toast('到头啦'); return; }
-          emb.dataset.pg = p;
-          bookGet(abk + ':' + String(p).padStart(3, '0'), function (rec) {
-            if (!(rec && rec.imgs && rec.imgs[0])) { emb.innerHTML = ''; return; }
-            emb.innerHTML = '<div class="section-title">课本原文<span class="sub">第' + p + '页 · 已离线</span></div>' +
-              '<img src="' + rec.imgs[0] + '" style="width:100%;display:block;border-radius:10px;background:#fff" alt="课本第' + p + '页">' +
-              '<div style="display:flex;gap:8px;margin-top:8px">' +
-              '<button class="btn ghost" style="flex:1" id="pg-prev">◀ 上一页</button>' +
-              '<button class="btn ghost" style="flex:1" id="pg-next">下一页 ▶</button></div>';
-            var pv = $('#pg-prev', emb), nx = $('#pg-next', emb);
-            if (pv) pv.onclick = function () { sfx('tap'); drawEmbed(p - 1); };
-            if (nx) nx.onclick = function () { sfx('tap'); drawEmbed(p + 1); };
-          });
-        })(pg0);
-      }
+    function mountBook(){
+      if(!emb||!lid0||route.indexOf('#/lesson/')!==0)return;
+      var found=findLessonAny(lid0);
+      window.LocalBookReader.mount({host:emb,lid:lid0,title:found?found.lesson.title:lid0,legacyPage:BOOK_ANCHORS[lid0],get:bookGet,keys:bookAllKeys,import:function(){ $('#photo-file',view).click(); }});
     }
+    mountBook();
     var pv = $('#photo-view', view);
     if (lid0 && pv) bookGet(lid0, function (rec) {
       if (rec && rec.imgs && rec.imgs.length) { pv.style.display = 'block'; pv.textContent = '📚 本地课本 · ' + rec.imgs.length + '页'; }
@@ -1327,13 +1315,20 @@
       var lid = pageLid(); if (!lid) return;
       var total = files.length, done = 0;
       bookGet(lid, function (rec) {
+        var fresh = !rec || !rec.imgs || !rec.imgs.length;
         rec = rec || { lid: lid, imgs: [], at: Date.now() };
-        files.forEach(function (f) {
+        var lesson=findLessonAny(lid);if(fresh&&lesson)rec.lessonTitle=lesson.lesson.title;
+        var ordered = new Array(total);
+        files.forEach(function (f, index) {
           compressImg(f, function (data) {
-            rec.imgs.push(data);
-            if (++done === total) bookPut(rec, function () {
+            ordered[index]=data;
+            if (++done !== total) return;
+            rec.imgs=rec.imgs.concat(ordered.filter(Boolean));
+            bookPut(rec, function () {
               sfx('check');
-              toast('已存 ' + total + ' 页到本机（不上网）');
+              toast('已存 ' + ordered.filter(Boolean).length + ' 页到本机（不上网）');
+              if(!pfl.isConnected)return;
+              mountBook();
               pfl.value = '';
               if (view.querySelector('#book-pages')) paintBookPages(rec);
               var pv2 = $('#photo-view', view);
@@ -1553,7 +1548,7 @@
         '<button class="btn" id="pc-connect" style="width:100%;margin-top:8px">连接电脑</button>' +
         '<div id="pc-status" style="font-size:13px;margin-top:8px;min-height:20px;color:var(--dim)">填好地址后点"连接电脑"。</div>' +
         '<div id="pc-books"></div>' +
-        '<div class="hint" style="margin:14px 0 6px">方法二：<b>离线文件夹导入</b>（微信收到"课本离线包.zip"→ 用文件管理解压 → 这里选解压出的 bookpack 文件夹）</div>' +
+        '<div class="hint" style="margin:14px 0 6px">方法二：<b>离线文件夹导入</b>（解压图片包后选择文件夹）。请先核对版本：当前语文第一课是《桂花雨》，旧版《白鹭》开篇图片包不适配。同编号已有图片会保留。</div>' +
         '<div class="hint" style="margin:10px 0 6px">先点选<b>当前要导入的科目</b>（纯数字文件名按它入库；yw001式文件名自动识别）：</div>' +
         '<div id="subj-pick" style="display:flex;gap:6px;flex-wrap:wrap">' +
           '<button class="btn ghost sp" data-ab="yw" style="flex:1;padding:8px 2px;font-size:14px">语文</button>' +
@@ -1601,8 +1596,8 @@
           var i2 = 0;
           (function next() {
             if (i2 >= jobs.length) {
-              fst.textContent = '✅ 本批 ' + jobs.length + ' 页已入库！继续点上方按钮再选下一批（图库一次限50张，分11批导完532页；已导过的自动跳过）';
-              sfx('done'); toast('课本离线包导入完成');
+              fst.textContent = '✅ 本批 ' + jobs.length + ' 个图片条目已处理，已有同编号图片保留。可继续选下一批；打开课文后请核对图片并设置首页。';
+              sfx('done'); toast('本批图片处理完成');
               return;
             }
             var j = jobs[i2++];
