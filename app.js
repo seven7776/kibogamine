@@ -459,6 +459,7 @@
   /* 气泡台词（萌宠页舞台） */
   var sayTimer = null;
   function say(text) {
+    if (homeSession && homeSession.tell) homeSession.tell(text);
     var b = $('#pet-bubble');
     if (!b) return;
     b.textContent = text;
@@ -849,17 +850,7 @@
     var h = '<div class="pet-name-row"><b>' + esc(p.name) + '</b>' +
       '<span class="lv">Lv.' + petLevel() + ' ' + petLevelName() + '</span>' +
       '<button class="rename" id="rename-pet">改名</button></div>';
-    h += '<div class="bear-house" id="bear-house">' +
-      '<div class="bh-wall"><div class="bh-window"><i class="win-sun"></i><i class="win-moon"></i><i class="win-star s1"></i><i class="win-star s2"></i><i class="win-star s3"></i></div><div class="bh-picture"></div><div class="bh-lamp"></div><div class="bh-curtain"></div><div class="bh-shelf"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>' +
-      '<div class="bh-floor"></div>' +
-      '<div class="bh-prop bh-table"></div><div class="bh-prop bh-bowl"></div>' +
-      '<div class="bh-prop bh-bed"><i class="pillow"></i><i class="blanket"></i></div>' +
-      '<div class="bh-prop bh-ball"></div>' +
-      '<div class="bh-prop bh-book"></div>' +
-      '<div class="bh-prop bh-cup"></div>' +
-      '<div class="bh-rug"></div>' +
-      '<div class="bubble" id="pet-bubble" style="display:none"></div>' +
-      '<canvas id="pet-canvas" data-scale="7"></canvas></div>';
+    h += '<div id="bear-home" class="pet-home-embedded"></div>';
 
     h += '<a class="arcade-entry" href="#/arcade"><span>PLAY / 黑白熊乐园</span><b>准备好一起闯关了吗？ ↗</b><small>躲障碍 · 跳栏杆 · 收星星 · 解锁新场景</small></a>';
     h += '<div class="stat-bars">' +
@@ -1000,7 +991,7 @@
       '<input type="file" id="import-file" accept=".json" style="display:none">' +
       '<button class="btn ghost" style="width:100%;color:var(--pink)" id="reset-btn">重置进度</button>' +
       '<div class="hint">进度备份包含奖章、课表、学习、打卡和游戏进度。练习文字与照片/音视频请另点“导出练习记录与附件”。本地课本照片仍需单独保留原图。换设备前请分别备份。</div></div>' +
-      '<div class="card"><div class="hint">希望之峰 v44 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
+      '<div class="card"><div class="hint">希望之峰 v45 · 给源远 · 黑白熊形象出自《弹丸论破》<br>教材：部编语文 / 苏教数学 / 译林英语 五年级上册</div></div>';
   }
 
   /* ================= 萌宠互动逻辑 ================= */
@@ -1155,10 +1146,12 @@
   }
 
   var arcadeSession = null;
+  var homeSession = null;
   function render() {
     window.PracticeJournal.close();
     stopSpeak();
     if (arcadeSession) { arcadeSession.destroy(); arcadeSession = null; }
+    if (homeSession) { homeSession.destroy(); homeSession = null; }
     if (petPlayer) { petPlayer.stop(); petPlayer = null; }
     if (window._petBlink) { clearInterval(window._petBlink); window._petBlink = null; }
     var route = location.hash || '#/home';
@@ -1176,12 +1169,20 @@
     else if (route === '#/checkin') html = renderCheckin();
     else if (route === '#/pet') html = renderPet();
     else if (route === '#/arcade') html = '<div id="bear-arcade"></div>';
+    else if (route === '#/house') html = '<div id="bear-home"></div>';
     else if (route === '#/settings') html = renderSettings();
     else html = renderHome();
 
     view.innerHTML = html;
     bindViewEvents(route);
     document.body.classList.toggle('in-arcade',route === '#/arcade');
+    document.body.classList.toggle('in-home',route === '#/house');
+    document.body.classList.toggle('in-pet',route === '#/pet');
+    if(route === '#/house' || route === '#/pet'){
+      S.home=window.BearHome.normalize(S.home);
+      homeSession=window.BearHome.mount($('#bear-home'),{state:S.home,skin:S.pet.skin,sound:S.sound,embedded:route === '#/pet',petAnimation:function(){return petFeedback && petFeedback.until > Date.now() ? petFeedback.anim : S.pet.sleeping ? 'sleep' : 'idle';},save:function(state){S.home=state;save();}});
+      if(petFeedback && petFeedback.until > Date.now() && homeSession.tell) homeSession.tell(petFeedback.text);
+    }
     if (route === '#/arcade') {
       S.arcade = window.BearArcade.normalize(S.arcade);
       arcadeSession = window.BearArcade.mount($('#bear-arcade'), {
@@ -1494,21 +1495,6 @@
     });
     // 萌宠
     if (route === '#/pet') {
-      var cv = $('#pet-canvas', view);
-      petPlayer = window.MonokumaPet.createPlayer(cv, function () { return S.pet.skin; });
-      var feedback = petFeedback && petFeedback.until > Date.now() ? petFeedback : null;
-      petPlayer.play(feedback ? feedback.anim : S.pet.sleeping ? 'sleep' : (petGrumpy() ? 'angry' : 'idle'));
-      if (feedback) say(feedback.text);
-      else setTimeout(function () { if ((location.hash || '#/home') === '#/pet') say(petGrumpy() ? quote('angry') : greetLine()); }, 500);
-      // 待机眨眼
-      if (window._petBlink) clearInterval(window._petBlink);
-      window._petBlink = setInterval(function () {
-        if (!petPlayer || S.pet.sleeping) return;
-        if (petPlayer.current() === 'idle') petPlayer.play('blink');
-        setTimeout(function () {
-          if (petPlayer && petPlayer.current() === 'blink') petPlayer.play(petGrumpy() ? 'angry' : 'idle');
-        }, 600);
-      }, 5000);
       // 皮肤小图
       $$('[data-skin-canvas]', view).forEach(function (c) {
         window.MonokumaPet.draw(c, { frame: 'stand', skin: c.getAttribute('data-skin-canvas'), scale: 3 });
@@ -1526,8 +1512,7 @@
           if (n) { S.pet.name = n; save(); render(); }
         });
       });
-      setScene(S.pet.sleeping ? 'sleeping' : 'living');
-      if (feedback && $('#bear-house')) $('#bear-house').className = feedback.scene;
+
 
     } else {
       petPlayer = null;

@@ -1,0 +1,133 @@
+/* Blender-authored room, touch navigation and family-friendly original activities. */
+(function(){
+ 'use strict';
+ const T=window.THREE;
+ const STATIONS=[
+  {id:'book',name:'故事角',icon:'📖',x:-2.85,z:-1.45,desc:'坐进阅读椅，翻一则小故事'},
+  {id:'piano',name:'黑白琴房',icon:'🎹',x:-2.12,z:.18,desc:'听一小段旋律，再把它弹出来'},
+  {id:'snack',name:'点心工坊',icon:'🍓',x:3.55,z:1.10,desc:'搭配一份水果点心，与黑白熊分享'},
+  {id:'bed',name:'云朵小憩',icon:'☾',x:2.25,z:-1.08,desc:'上床放松，跟着灯光慢慢呼吸'},
+  {id:'sofa',name:'沙发放空',icon:'☕',x:-2.65,z:2.28,desc:'坐下来伸个懒腰，看看自己的收藏'},
+  {id:'capsule',name:'惊喜收藏机',icon:'✦',x:3.38,z:-.35,desc:'领取探索房间得到的纪念摆件'}
+ ];
+ const BLOCKS=[[-5.8,-4.45,-4.65,-1.6],[-4.17,-2.66,-3.76,-2.33],[-5.65,-3.51,-1.13,1.48],[-3.28,-2.63,-.34,.70],[-4.83,-1.12,3.18,4.62],[-1.52,.08,1.34,2.92],[2.28,5.30,-4.77,-1.72],[1.21,2.03,-4.23,-3.38],[4.33,5.85,-.70,2.01],[4.28,5.81,2.06,3.12],[4.14,5.49,-1.80,-.54],[-5.48,-4.68,3.71,4.58],[4.64,5.68,3.56,4.64]];
+ BLOCKS.push([-1.52,.77,-4.16,-3.17],[-.73,-.03,-3.02,-2.32]);
+ const STUDY={x:-.38,z:-1.80,name:'学习桌'};
+ function blocked(x,z){return Math.abs(x)>5.65||Math.abs(z)>4.65||BLOCKS.some(b=>x>b[0]-.23&&x<b[1]+.23&&z>b[2]-.23&&z<b[3]+.23);}
+ function pathTo(start,end){
+  const step=.25,key=(x,z)=>x+','+z,from=[Math.round(start.x/step),Math.round(start.z/step)],goal=[Math.round(end.x/step),Math.round(end.z/step)];
+  let open=[{x:from[0],z:from[1],g:0,f:0}],seen=new Map(),parent=new Map();seen.set(key(...from),0);let last=null;
+  for(let n=0;open.length&&n<4500;n++){open.sort((a,b)=>a.f-b.f);const c=open.shift(),ck=key(c.x,c.z);if(c.g!==seen.get(ck))continue;if(c.x===goal[0]&&c.z===goal[1]){last=ck;break;}
+   for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const x=c.x+dx,z=c.z+dz,k=key(x,z),g=c.g+1;if(blocked(x*step,z*step)||(seen.has(k)&&seen.get(k)<=g))continue;seen.set(k,g);parent.set(k,ck);open.push({x,z,g,f:g+Math.abs(goal[0]-x)+Math.abs(goal[1]-z)});}}
+  if(!last)return [];const points=[];while(last!==key(...from)){points.unshift(last.split(',').map(Number).map(v=>v*step));last=parent.get(last);}return points;
+ }
+ function normalize(s){s=s&&typeof s==='object'?s:{};return {done:Array.isArray(s.done)?Array.from(new Set(s.done.filter(v=>STATIONS.some(x=>x.id===v)))):[],gifts:Math.floor(Math.max(0,Math.min(3,Number(s.gifts)||0))),night:!!s.night,quality:['low','balanced','high'].includes(s.quality)?s.quality:'balanced'};}
+ function mount(host,opts){
+  let state=normalize(opts.state),disposed=false,raf=0,ready=false,keys={},joy={x:0,y:0},route=[],target=null,activity=null,t=0,last=0,angle=.58,pitch=.48,distance=10.5,overview=true,nearest=null,quality=state.quality,night=state.night,audio=null,timers=new Set(),renderer,room,envRT;
+  const cleanups=[],on=(el,name,fn,options)=>{el.addEventListener(name,fn,options);cleanups.push(()=>el.removeEventListener(name,fn,options));},later=(fn,ms)=>{const id=setTimeout(()=>{timers.delete(id);if(!disposed)fn();},ms);timers.add(id);return id;};
+  host.innerHTML='<section class="home-world"><div class="home-stage"><canvas aria-label="黑白熊的三维房间" tabindex="0"></canvas><header class="home-top"><a href="#/pet" class="home-pill">‹ 返回</a><div class="home-title"><small>MONOKUMA / PRIVATE LOUNGE</small><h2>黑白熊的家</h2><span id="home-progress"></span></div><button class="home-pill" id="home-tour">房间导览</button></header><div class="home-tools"><button id="home-view">跟随视角</button><button id="home-light">切换夜晚</button><label>画质 <select id="home-quality"><option value="low">流畅</option><option value="balanced">均衡</option><option value="high">精细</option></select></label><button id="home-sound">声音</button></div><div id="home-labels"></div><div class="home-loading"><span class="home-spinner"></span><b>正在布置黑白熊的家…</b><small>首次加载房间模型，约 9 MB</small></div><div class="home-hint" aria-live="polite">左侧摇杆走动 · 拖动房间转视角 · 靠近家具可互动</div><div class="home-bottom"><div class="home-stick" aria-label="移动摇杆"><i></i><span>走动</span></div><div class="home-context"><small id="home-near">先在房间里逛逛</small><button id="home-interact" disabled>靠近家具互动</button></div><button class="home-pill home-reset" id="home-reset">回到门口</button></div><button class="home-panel-toggle home-pill" hidden>收起内容</button></div><div class="home-dialog" hidden></div></section>';
+  const q=s=>host.querySelector(s),canvas=q('canvas'),hint=q('.home-hint'),panel=q('.home-dialog'),stage=q('.home-stage'),world=q('.home-world');let sound=opts.sound!==false;
+  if(opts.embedded){const link=q('.home-top a');link.href='#/house';link.textContent='展开房间';}
+  function tell(text){hint.textContent=text;}
+  function save(){opts.save(state);q('#home-progress').textContent='探索 '+state.done.length+' / 6 · 收藏 '+state.gifts+' / 3';}
+  function complete(id){if(!state.done.includes(id)){state.done.push(id);save();tell('发现新乐趣：'+STATIONS.find(s=>s.id===id).name+'。去收藏机看看吧！');}else tell('再玩一次也很开心。探索记录已保留。');}
+  function note(i,delay=0){if(!sound)return;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain(),at=audio.currentTime+delay;o.type='triangle';o.frequency.value=[261.63,293.66,329.63,392,440][i];g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.09,at+.02);g.gain.exponentialRampToValueAtTime(.0001,at+.65);o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.7);}catch(e){}}
+  const scene=new T.Scene();scene.background=new T.Color('#29232c');scene.fog=new T.Fog('#29232c',24,60);
+  const camera=new T.PerspectiveCamera(48,1,.05,80),focus=new T.Vector3(0,1.1,0),desired=new T.Vector3();
+  try{renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});}catch(e){q('.home-loading').innerHTML='<b>这台设备暂时不能开启三维画面</b><a href="#/pet">返回黑白熊</a>';return {destroy(){disposed=true;cleanups.forEach(f=>f());}};}
+  renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+  const hemi=new T.HemisphereLight(0xe7efff,0x6c4831,.75);scene.add(hemi);
+  const sun=new T.DirectionalLight(0xffead1,2.0);sun.position.set(-3,9,4);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.1,far:30});sun.shadow.bias=-.0003;sun.shadow.normalBias=.03;sun.target.position.set(0,0,0);scene.add(sun,sun.target);
+  const fill=new T.DirectionalLight(0xb3d6ff,.8);fill.position.set(0,4,-5);scene.add(fill);
+  const warm=new T.PointLight(0xffb36e,1.5,13,1.5);warm.position.set(0,3.5,.1);scene.add(warm);
+  const bedside=new T.PointLight(0xffa857,.65,4,1.5);bedside.position.set(1.6,1.65,-3.8);scene.add(bedside);
+  const ec=document.createElement('canvas');ec.width=512;ec.height=256;const ex=ec.getContext('2d'),eg=ex.createLinearGradient(0,0,0,256);eg.addColorStop(0,'#91b8e0');eg.addColorStop(.45,'#e5d9c1');eg.addColorStop(.52,'#9b7a53');eg.addColorStop(1,'#242028');ex.fillStyle=eg;ex.fillRect(0,0,512,256);ex.fillStyle='#fff4dd';ex.fillRect(170,35,85,85);const et=new T.CanvasTexture(ec);et.mapping=T.EquirectangularReflectionMapping;et.colorSpace=T.SRGBColorSpace;const pm=new T.PMREMGenerator(renderer);envRT=pm.fromEquirectangular(et);scene.environment=envRT.texture;pm.dispose();et.dispose();
+  const pet=window.Pet3D.buildModel(opts.skin||'classic');pet.root.name='HomeMonokuma';pet.root.scale.setScalar(.48);pet.root.position.set(.9,.08,3.65);scene.add(pet.root);pet.root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+  const hotspots=STATIONS.map(s=>{const el=document.createElement('button');el.className='home-pin';el.dataset.station=s.id;el.innerHTML='<span>'+s.icon+'</span><b>'+s.name+'</b>';el.title='走到'+s.name;q('#home-labels').append(el);on(el,'click',()=>go(s));return {s,el};});
+  const studyMarker=document.createElement('span'),studyButton=document.createElement('button');studyMarker.className='home-pin home-study-marker';studyMarker.textContent='✎ 学习桌';studyButton.className='home-study-enter';studyButton.textContent='开始学习';studyButton.hidden=true;studyButton.setAttribute('aria-label','开始学习');q('#home-labels').append(studyMarker,studyButton);let studyUntil=0;
+  on(studyButton,'click',()=>{location.hash='#/study';});on(studyButton,'pointerenter',()=>{studyUntil=t+4;});
+  function nearStudyPointer(e){
+   if(!ready||activity||!panel.hidden)return;const rect=canvas.getBoundingClientRect();let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+   for(const x of [-1.60,.88])for(const y of [.25,1.85])for(const z of [-4.20,-2.25]){const p=new T.Vector3(x,y,z).project(camera);if(p.z>1)return;const sx=(p.x*.5+.5)*rect.width+rect.left,sy=(-p.y*.5+.5)*rect.height+rect.top;minX=Math.min(minX,sx);maxX=Math.max(maxX,sx);minY=Math.min(minY,sy);maxY=Math.max(maxY,sy);}
+   if(e.clientX>=minX-24&&e.clientX<=maxX+24&&e.clientY>=minY-24&&e.clientY<=maxY+24)studyUntil=t+4;
+  }
+  on(canvas,'pointermove',nearStudyPointer);on(canvas,'pointerdown',nearStudyPointer);
+  function go(s){if(!ready)return;closeActivity();target=s;route=pathTo(pet.root.position,s);overview=false;q('#home-view').textContent='全景视角';tell(route.length?'正在走向'+s.name+'；操作摇杆可以随时停下':'已到附近，点击互动开始');}
+  function setLight(){hemi.intensity=night?.25:.75;sun.intensity=night?.15:1.5;fill.intensity=night?.15:.65;warm.intensity=night?1.8:1.1;bedside.intensity=night?1.2:.65;scene.traverse(o=>{if(o.isMesh&&o.material&&!Array.isArray(o.material))o.material.envMapIntensity=night?.12:.4;});renderer.toneMappingExposure=night?1.10:1.10;q('#home-light').textContent=night?'切换白天':'切换夜晚';state.night=night;save();}
+  function setQuality(){state.quality=quality;renderer.setPixelRatio(Math.min(devicePixelRatio||1,quality==='low'?1:quality==='high'?2:1.4));renderer.shadowMap.enabled=quality!=='low';const size=quality==='high'?2048:1024;sun.shadow.mapSize.set(size,size);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}resize();save();}
+  function resize(){const rect=stage.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/Math.max(1,rect.height);camera.updateProjectionMatrix();}
+  const observer=new ResizeObserver(resize);observer.observe(stage);q('#home-quality').value=quality;setQuality();setLight();
+  on(q('#home-quality'),'change',e=>{quality=e.target.value;setQuality();});on(q('#home-light'),'click',()=>{night=!night;setLight();});
+  on(q('#home-sound'),'click',()=>{sound=!sound;q('#home-sound').textContent=sound?'声音 开':'声音 关';});q('#home-sound').textContent=sound?'声音 开':'声音 关';
+  on(q('#home-view'),'click',()=>{overview=!overview;q('#home-view').textContent=overview?'跟随视角':'全景视角';});
+  on(q('#home-reset'),'click',()=>{closeActivity();route=[];target=null;pet.root.position.set(.9,.08,3.65);overview=true;angle=.58;pitch=.48;tell('回到门口。拖动房间可以换个角度看看。');});
+  function clearInput(){keys={};joy.x=joy.y=0;q('.home-stick i').style.transform='translate(-50%,-50%)';}
+  on(window,'blur',clearInput);on(document,'visibilitychange',()=>{clearInput();last=0;});
+  on(window,'keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||(opts.embedded&&!host.contains(document.activeElement)))return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','escape'].includes(k)){e.preventDefault();if(k==='escape'){closeActivity();return;}if(k==='e'){if(!e.repeat&&nearest&&!activity)startActivity(nearest);return;}keys[k]=true;route=[];}});
+  on(window,'keyup',e=>{delete keys[e.key.toLowerCase()];});
+  const stick=q('.home-stick');let stickID=null;
+  function stickMove(e){const r=stick.getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,mag=Math.max(38,Math.hypot(dx,dy));joy.x=dx/mag;joy.y=dy/mag;stick.querySelector('i').style.transform='translate(calc(-50% + '+joy.x*34+'px),calc(-50% + '+joy.y*34+'px))';}
+  on(stick,'pointerdown',e=>{if(activity)return;stickID=e.pointerId;stick.setPointerCapture(e.pointerId);route=[];stickMove(e);});on(stick,'pointermove',e=>{if(e.pointerId===stickID)stickMove(e);});['pointerup','pointercancel','lostpointercapture'].forEach(n=>on(stick,n,()=>{stickID=null;joy.x=joy.y=0;stick.querySelector('i').style.transform='translate(-50%,-50%)';}));
+  let drag=null;on(canvas,'pointerdown',e=>{canvas.focus({preventScroll:true});drag={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});on(canvas,'pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;angle-=(e.clientX-drag.x)*.007;pitch=Math.max(.16,Math.min(1.1,pitch+(e.clientY-drag.y)*.005));drag.x=e.clientX;drag.y=e.clientY;});['pointerup','pointercancel'].forEach(n=>on(canvas,n,()=>{drag=null;}));on(canvas,'wheel',e=>{e.preventDefault();distance=Math.max(5,Math.min(15,distance+e.deltaY*.008));},{passive:false});
+  on(q('#home-interact'),'click',()=>{if(nearest)startActivity(nearest);});
+  let panelCollapsed=false,savedView=null;
+  function layoutPanel(){world.classList.toggle('has-panel',!panel.hidden&&!panelCollapsed);world.classList.toggle('panel-open',!panel.hidden);q('.home-panel-toggle').hidden=panel.hidden;q('.home-panel-toggle').textContent=panelCollapsed?'展开内容':'收起内容';q('.home-panel-toggle').setAttribute('aria-expanded',String(!panelCollapsed));resize();}
+  on(q('.home-panel-toggle'),'click',()=>{panelCollapsed=!panelCollapsed;layoutPanel();});
+  function dialog(title,body){panel.hidden=false;panelCollapsed=false;panel.innerHTML='<div class="home-sheet" role="dialog" aria-modal="false" aria-label="'+title+'"><button class="home-close" aria-label="结束互动">×</button><small>黑白熊的闲暇时光</small><h3>'+title+'</h3>'+body+'</div>';layoutPanel();panel.querySelector('.home-close').onclick=closeActivity;panel.querySelector('.home-close').focus();}
+  on(q('#home-tour'),'click',()=>{closeActivity();dialog('在家里逛一逛','<p>选择一个角落，黑白熊会走过去。也可以用摇杆自由走动。</p><div class="home-destinations"><button data-study-dest><span>✎</span><b>学习桌</b><small>桌面附近会出现“开始学习”，点击进入学习首页</small></button>'+STATIONS.map(s=>'<button data-dest="'+s.id+'"><span>'+s.icon+'</span><b>'+s.name+'</b><small>'+s.desc+'</small></button>').join('')+'</div><p class="home-footnote">本房间互动为适合孩子的原创改编，不代表原作角色的官方生活设定。</p>');panel.querySelectorAll('[data-dest]').forEach(b=>b.onclick=()=>{panel.hidden=true;go(STATIONS.find(s=>s.id===b.dataset.dest));});panel.querySelector('[data-study-dest]').onclick=()=>{panel.hidden=true;go(STUDY);};});
+  let returnPosition=null;
+  function closeActivity(){if(returnPosition){pet.root.position.copy(returnPosition);returnPosition=null;}pet.root.rotation.x=0;activity=null;panel.hidden=true;panelCollapsed=false;if(savedView){({angle,pitch,distance,overview}=savedView);savedView=null;}layoutPanel();timers.forEach(clearTimeout);timers.clear();clearInput();}
+  const stories=[['纸飞机的第二次飞行','黑白熊折了一架纸飞机。第一次，它刚出手就落在脚边。它没有把纸揉掉，而是压平机翼，又调整了机头。第二次，飞机轻轻飞过了地毯。黑白熊给自己写下了一句话：今天不必一下就成功，愿意再试一次，也是一种进步。','遇到第一次失败，可以怎么做？',['调整方法，再试一次','马上认定自己不行'],0],['少掉的一块拼图','黑白熊快拼完一幅星空，却找不到最后一块。它先整理桌面，再把盒子里的东西逐个放好。小拼图原来藏在一张卡片下面。窗外天已经黑了，屋里却变得整齐又温暖。','是什么帮助它找到拼图？',['不停责怪拼图盒','耐心整理、仔细寻找'],1],['留给朋友的草莓','盘子里剩下两颗草莓。黑白熊闻了闻，挑出更红的那颗放进小碗。它想：等朋友过来，可以一起吃。等待的时候，它给两个人倒好了水。一份点心，因为分享，变成了两份快乐。','故事里的快乐来自哪里？',['和朋友分享','把点心全部藏起来'],0]];
+  function startActivity(s){
+   if(!ready||activity)return;if(Math.hypot(pet.root.position.x-s.x,pet.root.position.z-s.z)>1.35){go(s);return;}
+   savedView={angle,pitch,distance,overview};angle=s.id==='sofa'?Math.PI:s.id==='piano'?1.15:.58;pitch=.38;distance=5.6;route=[];clearInput();activity={id:s.id,start:t,anim:'idle'};returnPosition=pet.root.position.clone();overview=false;
+   if(s.id==='book'){
+    pet.root.position.set(-3.41,.68,-2.98);pet.root.rotation.y=0;activity.anim='sit';let i=state.done.includes('book')?1:0;const story=stories[i];
+    dialog('故事角 · '+story[0],'<p class="home-story">'+story[1]+'</p><b>'+story[2]+'</b><div class="home-choices">'+story[3].map((v,j)=>'<button data-answer="'+j+'">'+v+'</button>').join('')+'</div><p id="activity-feedback"></p>');
+    panel.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{if(Number(b.dataset.answer)===story[4]){complete('book');q('#activity-feedback').textContent='读完啦。把这点小小的勇气带回生活里。';activity.anim='happy';}else q('#activity-feedback').textContent='再读一读故事，想想它做了什么。';});
+   }else if(s.id==='piano'){
+    pet.root.position.set(-2.96,.68,.18);pet.root.rotation.y=-Math.PI/2;activity.anim='sit';let melody=[0,2,3,2,0],entered=[],playing=false;
+    dialog('黑白琴房','<p>先听旋律，再按相同顺序弹奏。也可以先自由弹一弹。</p><button id="piano-listen" class="home-primary">♫ 听一遍</button><div class="home-piano">'+['Do','Re','Mi','Sol','La'].map((n,i)=>'<button data-note="'+i+'">'+n+'</button>').join('')+'</div><p id="activity-feedback">旋律：5 个音符</p>');
+    q('#piano-listen').onclick=()=>{entered=[];playing=true;q('#activity-feedback').textContent='仔细听…';melody.forEach((n,i)=>{note(n,i*.55);later(()=>{const b=panel.querySelector('[data-note="'+n+'"]');if(b){b.classList.add('lit');later(()=>b.classList.remove('lit'),320);}},i*550);});later(()=>{playing=false;q('#activity-feedback').textContent='轮到你了：0 / 5';},2900);};
+    panel.querySelectorAll('[data-note]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.note);note(n);if(playing)return;entered.push(n);if(n!==melody[entered.length-1]){entered=[];q('#activity-feedback').textContent='这个音不太一样，再听一遍或重新试试。';}else if(entered.length===melody.length){complete('piano');q('#activity-feedback').textContent='合奏成功！你和黑白熊配合得很好。';entered=[];}else q('#activity-feedback').textContent='弹对 '+entered.length+' / 5';});
+   }else if(s.id==='snack'){
+    pet.root.rotation.y=Math.PI/2;let chosen=new Set();dialog('点心工坊','<p>选三种水果，准备一份彩色点心。</p><div class="home-fruits">'+['🍓 草莓','🍌 香蕉','🫐 蓝莓','🍊 橘子','🥝 猕猴桃'].map((v,i)=>'<button data-fruit="'+i+'">'+v+'</button>').join('')+'</div><p id="activity-feedback">已选 0 / 3</p><button id="snack-serve" class="home-primary" disabled>一起分享</button>');
+    panel.querySelectorAll('[data-fruit]').forEach(b=>b.onclick=()=>{const id=b.dataset.fruit;if(chosen.has(id))chosen.delete(id);else if(chosen.size<3)chosen.add(id);b.classList.toggle('selected',chosen.has(id));q('#activity-feedback').textContent='已选 '+chosen.size+' / 3';q('#snack-serve').disabled=chosen.size!==3;});
+    q('#snack-serve').onclick=()=>{activity.anim='eat';complete('snack');q('#activity-feedback').textContent='点心做好了，黑白熊正在开心地品尝。';q('#snack-serve').disabled=true;[0,2,3].forEach((n,i)=>note(n,i*.13));};
+   }else if(s.id==='bed'){
+    pet.root.position.set(3.8,1.3,-2.6);pet.root.rotation.set(-Math.PI/2,0,0);activity.anim='sleep';dialog('云朵小憩','<div class="home-breath"></div><p id="activity-feedback">慢慢吸气，再轻轻呼气…</p><p>陪黑白熊放松片刻。关闭窗口就会下床。</p>');later(()=>{complete('bed');q('#activity-feedback').textContent='休息好了，再出发也不迟。';},6500);
+   }else if(s.id==='sofa'){
+    pet.root.position.set(-2.98,.78,3.80);pet.root.rotation.y=Math.PI;activity.anim='sit';dialog('沙发放空','<p>伸个懒腰，给努力过的自己一点放松时间。</p><div class="home-collection">'+['星星摆件','小小唱片','希望奖杯'].map((n,i)=>'<span>'+(['⭐','💿','🏆'][i])+'<b>'+n+'</b><small>'+(state.gifts>i?'已收藏':'还没发现')+'</small></span>').join('')+'</div><button id="sofa-stretch" class="home-primary">伸个懒腰</button>');q('#sofa-stretch').onclick=()=>{activity.anim='happy';complete('sofa');later(()=>{if(activity)activity.anim='sit';},1800);};
+   }else if(s.id==='capsule'){
+    pet.root.rotation.y=Math.PI/2;const earned=Math.min(3,1+Math.floor(state.done.filter(v=>v!=='capsule').length/2));dialog('惊喜收藏机','<div class="home-capsule">✦</div><p>每探索两个新角落，多发现一件纪念摆件。第一件可以直接领取。</p><p id="activity-feedback">可领取 '+Math.max(0,earned-state.gifts)+' 件 · 已收藏 '+state.gifts+' / 3</p><button id="capsule-turn" class="home-primary" '+(earned<=state.gifts?'disabled':'')+'>转动手柄</button>');q('#capsule-turn').onclick=()=>{q('#capsule-turn').disabled=true;q('.home-capsule').classList.add('turning');activity.anim='giggle';later(()=>{state.gifts++;complete('capsule');save();const names=['星星摆件','小小唱片','希望奖杯'];q('.home-capsule').textContent=['⭐','💿','🏆'][state.gifts-1];q('#activity-feedback').textContent='收到了「'+names[state.gifts-1]+'」！摆件已放在房间里。';showGifts();[0,2,3,4].forEach((n,i)=>note(n,i*.12));},1300);};
+   }
+  }
+  const giftGroup=new T.Group();scene.add(giftGroup);
+  function showGifts(){while(giftGroup.children.length){const c=giftGroup.children[0];c.geometry.dispose();c.material.dispose();giftGroup.remove(c);}for(let i=0;i<state.gifts;i++){const mesh=new T.Mesh(i===0?new T.OctahedronGeometry(.14):i===1?new T.TorusGeometry(.12,.03,8,24):new T.ConeGeometry(.13,.26,16),new T.MeshStandardMaterial({color:[0xeac77c,0xe96591,0xf6cb5c][i],metalness:.65,roughness:.25}));mesh.position.set(4.87,1.25,-.36-i*.35);mesh.castShadow=true;giftGroup.add(mesh);}}showGifts();
+  let wallMeshes=[];
+  import('./assets/home/GLTFLoader.js').then(async module=>{
+   const utils=await import('./assets/home/BufferGeometryUtils.js');if(disposed)return;new module.GLTFLoader().load('assets/home/hope-room.glb',gltf=>{
+    if(disposed){window.Pet3D.dispose(gltf.scene);return;}room=gltf.scene;room.updateMatrixWorld(true);
+    // Merge static furniture by material; retain walls separately for an unobstructed orbit.
+    const buckets=new Map(),original=[];room.traverse(o=>{if(!o.isMesh)return;o.receiveShadow=true;o.castShadow=true;if(/^(Back_wall|Left_wall|Right_wall)/.test(o.name)){wallMeshes.push(o);return;}if(Array.isArray(o.material))return;const g=o.geometry.clone().applyMatrix4(o.matrixWorld);for(const a of Object.keys(g.attributes))if(!['position','normal','uv'].includes(a))g.deleteAttribute(a);if(!g.attributes.uv)g.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(g.attributes.position.count*2),2));const flat=g.index?g.toNonIndexed():g;if(flat!==g)g.dispose();if(!buckets.has(o.material))buckets.set(o.material,[]);buckets.get(o.material).push(flat);original.push(o);});
+    for(const [material,geos] of buckets){const merged=utils.mergeGeometries(geos,false);if(merged){const mesh=new T.Mesh(merged,material);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);}geos.forEach(g=>g.dispose());}original.forEach(o=>{o.removeFromParent();o.geometry.dispose();});scene.add(room);setLight();ready=true;q('.home-loading').hidden=true;canvas.dataset.ready='true';tell('欢迎回家。先用房间导览选个角落，或用左侧摇杆走动。');
+   },undefined,()=>{if(!disposed){q('.home-loading').innerHTML='<b>房间没有加载完整</b><p>请联网后重新进入，首次加载完成后可离线使用。</p><a href="#/pet">返回后重试</a>';}});
+  }).catch(e=>{if(!disposed){q('.home-loading').innerHTML='<b>三维模块加载失败</b><p>请更新浏览器或重新联网进入。</p><a href="#/pet">返回</a>';console.error(e);}});
+  function loop(ts){if(disposed)return;raf=requestAnimationFrame(loop);if(document.hidden){last=0;return;}const dt=Math.min(.04,last?(ts-last)/1000:.016);last=ts;t+=dt;let moving=false;
+   if(ready&&!activity&&panel.hidden){let x=joy.x+(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),z=joy.y+(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);const len=Math.hypot(x,z);if(len){x/=Math.max(1,len);z/=Math.max(1,len);const ca=Math.cos(angle),sa=Math.sin(angle);const nx=x*ca+z*sa,nz=-x*sa+z*ca;x=nx;z=nz;}else if(route.length){const next=route[0],dx=next[0]-pet.root.position.x,dz=next[1]-pet.root.position.z,d=Math.hypot(dx,dz);if(d<.12)route.shift();else{x=dx/d;z=dz/d;}}
+    if(x||z){const step=dt*2.2,px=pet.root.position.x,pz=pet.root.position.z;if(!blocked(px+x*step,pz))pet.root.position.x+=x*step;if(!blocked(pet.root.position.x,pz+z*step))pet.root.position.z+=z*step;moving=Math.hypot(pet.root.position.x-px,pet.root.position.z-pz)>.001;if(moving){const a=Math.atan2(x,z),diff=Math.atan2(Math.sin(a-pet.root.rotation.y),Math.cos(a-pet.root.rotation.y));pet.root.rotation.y+=diff*Math.min(1,dt*12);}}}
+   window.Pet3D.animate(pet.parts,pet.bodyG,activity?activity.anim:moving?'walk':opts.petAnimation?opts.petAnimation():'idle',t,dt);
+   let nextNear=null,best=1.36;STATIONS.forEach(s=>{const d=Math.hypot(pet.root.position.x-s.x,pet.root.position.z-s.z);if(d<best){nextNear=s;best=d;}});if(nextNear!==nearest){nearest=nextNear;q('#home-near').textContent=nearest?nearest.desc:'在房间里慢慢逛逛';q('#home-interact').textContent=nearest?'使用'+nearest.name:'靠近家具互动';q('#home-interact').disabled=!nearest;}
+   if(target&&!route.length&&!moving&&!activity){if(Math.hypot(pet.root.position.x-target.x,pet.root.position.z-target.z)<.5){if(target===STUDY){studyUntil=t+4;tell('学习桌到了，点击桌面上方的“开始学习”。');}else{nearest=target;tell('到了「'+target.name+'」，点击右下方开始互动。');q('#home-near').textContent=target.desc;q('#home-interact').textContent='使用'+target.name;q('#home-interact').disabled=false;}target=null;}}
+   const center=overview?new T.Vector3(0,1.3,0):pet.root.position.clone().add(new T.Vector3(0,activity?.55:.85,0));focus.lerp(center,Math.min(1,dt*5));const dist=activity?Math.max(4.8,distance/(Math.min(1,camera.aspect))):overview?(opts.embedded?Math.max(16.5,18.5/camera.aspect):(camera.aspect<1?20:16.5)):distance;desired.set(focus.x+Math.sin(angle)*Math.cos(pitch)*dist,focus.y+Math.sin(pitch)*dist,focus.z+Math.cos(angle)*Math.cos(pitch)*dist);camera.position.lerp(desired,Math.min(1,dt*7));camera.lookAt(focus);
+   wallMeshes.forEach(w=>{w.visible=w.name.startsWith('Back_wall')?camera.position.z>-4.9:camera.position.x>-5.9;});
+   for(const {s,el} of hotspots){const p=new T.Vector3(s.x,1.05,s.z).project(camera);el.style.left=((p.x*.5+.5)*100)+'%';el.style.top=((-p.y*.5+.5)*100)+'%';el.hidden=!ready||!!activity||!panel.hidden||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1;el.classList.toggle('visited',state.done.includes(s.id));}
+   const sp=new T.Vector3(-.38,1.77,-3.50).project(camera),studyVisible=ready&&!activity&&panel.hidden&&sp.z<1&&Math.abs(sp.x)<.93&&Math.abs(sp.y)<.90,studyNear=studyUntil>t||Math.hypot(pet.root.position.x-STUDY.x,pet.root.position.z-STUDY.z)<1.1;
+   for(const el of [studyMarker,studyButton]){el.style.left=((sp.x*.5+.5)*100)+'%';el.style.top=((-sp.y*.5+.5)*100)+'%';}studyMarker.hidden=!studyVisible||studyNear;studyButton.hidden=!studyVisible||!studyNear;
+   giftGroup.children.forEach((m,i)=>{m.rotation.y=t*.5+i;});renderer.render(scene,camera);
+  }
+  camera.position.set(10,12,17);raf=requestAnimationFrame(loop);
+  return {tell,inspect:()=>({ready,position:pet.root.position.toArray(),camera:camera.position.toArray(),activity:activity&&activity.id,state:JSON.parse(JSON.stringify(state)),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,routeRemaining:route.length}),destroy(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);timers.forEach(clearTimeout);cleanups.forEach(f=>f());observer.disconnect();if(audio)audio.close().catch(()=>{});window.Pet3D.dispose(scene);envRT.dispose();renderer.dispose();renderer.forceContextLoss();}};
+ }
+ window.BearHome={mount,normalize,blocked,pathTo,stations:STATIONS};
+})();
